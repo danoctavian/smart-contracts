@@ -38,6 +38,7 @@
     "@openzeppelin/contracts": "^2.4.0",
     "bitcore-lib": "^0.16.0",
     "eth-lightwallet": "^3.0.1",
+    "truffle-contract": "^4.0.31",
     "web3": "^0.20.0"
   },
   "devDependencies": {

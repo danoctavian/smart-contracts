@@ -29,6 +29,7 @@ const gvProp = require('./utils/gvProposal.js').gvProposal;
 const encode = require('./utils/encoder.js').encode;
 const getQuoteValues = require('./utils/getQuote.js').getQuoteValues;
 const getValue = require('./utils/getMCRPerThreshold.js').getValue;
+const {loadCompiledContract} = require('./utils/contractLoader');
 
 const CA_ETH = '0x45544800';
 const CLA = '0x434c41';
@@ -150,9 +151,20 @@ contract('Distributor buy cover and claim', function([
     p2 = await Pool2.deployed();
     cad = await DAI.deployed();
     dsv = await DSValue.deployed();
-    distributor = await Distributor.new(nxms.address, priceLoadPercentage, {
-      from: coverHolder
-    });
+    distributor = await loadCompiledContract(
+      coverHolder,
+      require('../build/contracts/Distributor.json'),
+      [nxms.address, priceLoadPercentage]
+    );
+
+    // distributor = await Distributor.new(nxms.address, priceLoadPercentage, {
+    //   from: coverHolder
+    // });
+
+    const data = await distributor.owner();
+    console.log(data);
+    console.log(`${owner} ${coverHolder}`);
+    console.log('fetched data');
 
     await mr.addMembersBeforeLaunch([], []);
     (await mr.launched()).should.be.equal(true);
@@ -190,9 +202,12 @@ contract('Distributor buy cover and claim', function([
     await tk.approve(tc.address, UNLIMITED_ALLOWANCE, {from: staker1});
     await tk.approve(tc.address, UNLIMITED_ALLOWANCE, {from: staker2});
     await tk.approve(tc.address, UNLIMITED_ALLOWANCE, {from: coverHolder});
+    console.log('approving...');
     await distributor.nxmTokenApprove(tc.address, UNLIMITED_ALLOWANCE, {
       from: coverHolder
     });
+
+    console.log('approved.');
 
     await tk.transfer(member1, ether(250));
     await tk.transfer(member2, ether(250));
