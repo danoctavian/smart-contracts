@@ -153,18 +153,13 @@ contract('Distributor buy cover and claim', function([
     dsv = await DSValue.deployed();
     distributor = await loadCompiledContract(
       coverHolder,
-      require('../build/contracts/Distributor.json'),
+      require('/Users/dan/nexusmutualwork/distributor-contract/build/contracts/Distributor.json'),
       [nxms.address, priceLoadPercentage]
     );
 
     // distributor = await Distributor.new(nxms.address, priceLoadPercentage, {
     //   from: coverHolder
     // });
-
-    const data = await distributor.owner();
-    console.log(data);
-    console.log(`${owner} ${coverHolder}`);
-    console.log('fetched data');
 
     await mr.addMembersBeforeLaunch([], []);
     (await mr.launched()).should.be.equal(true);
