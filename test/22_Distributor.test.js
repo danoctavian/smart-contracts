@@ -394,7 +394,7 @@ contract('Distributor buy cover and claim', function([
             const withdrawnSum = buyCoverFee
               .mul(new web3.utils.BN(2))
               .toString();
-            const r = await distributor.withdrawETH(
+            const r = await distributor.withdrawEther(
               distributorFeeReceiver,
               withdrawnSum,
               {
@@ -422,14 +422,18 @@ contract('Distributor buy cover and claim', function([
           it('distributor is able sell NXM tokens for ETH', async function() {
             const maxSellTokens = await mcr.getMaxSellTokens();
             const sellAmount = maxSellTokens;
-            const withdrawableETHPreSale = await distributor.withdrawableETH.call();
+            const withdrawableETHPreSale = await distributor.withdrawableTokens.call(
+              toHex('ETH')
+            );
             const balancePreSale = await web3.eth.getBalance(
               distributor.address
             );
             await distributor.sellNXMTokens(sellAmount, {
               from: coverHolder
             });
-            const withdrawableETHPostSale = await distributor.withdrawableETH.call();
+            const withdrawableETHPostSale = await distributor.withdrawableTokens.call(
+              toHex('ETH')
+            );
             const balancePostSale = await web3.eth.getBalance(
               distributor.address
             );
