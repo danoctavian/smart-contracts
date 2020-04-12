@@ -310,33 +310,53 @@ contract('Distributor buy cover and claim', function([
           });
 
           it('should return token data for token with claim in progress', async () => {
-            const tokenData = await distributor.getTokenData.call(firstTokenId);
+            const tokenData = await distributor.tokens.call(firstTokenId);
 
-            tokenData.coverId.should.be.equal('1');
+            console.log(`TOKEN DATA IS:`);
+            console.log(tokenData);
+
+            tokenData.coverId.toString().should.be.equal('1');
             tokenData.claimInProgress.should.be.equal(true);
 
-            tokenData.coverAmount.should.be.equal(coverDetails[0].toString());
-            tokenData.coverPrice.should.be.equal(coverDetails[1].toString());
-            tokenData.coverPriceNXM.should.be.equal(coverDetails[2].toString());
-            tokenData.expireTime.should.be.equal(coverDetails[3].toString());
-            tokenData.claimId.should.be.equal(claimId.toString());
+            tokenData.coverAmount
+              .toString()
+              .should.be.equal(coverDetails[0].toString());
+            tokenData.coverPrice
+              .toString()
+              .should.be.equal(coverDetails[1].toString());
+            tokenData.coverPriceNXM
+              .toString()
+              .should.be.equal(coverDetails[2].toString());
+            tokenData.expireTime
+              .toString()
+              .should.be.equal(coverDetails[3].toString());
+            tokenData.generationTime
+              .toString()
+              .should.be.equal(coverDetails[4].toString());
+            tokenData.claimId.toString().should.be.equal(claimId.toString());
           });
 
           it('should return token data for token with no claim in progress', async () => {
-            const tokenData = await distributor.getTokenData.call(
-              secondTokenId
-            );
+            const tokenData = await distributor.tokens.call(secondTokenId);
 
-            tokenData.coverId.should.equal('2');
+            tokenData.coverId.toString().should.equal('2');
             tokenData.claimInProgress.should.equal(false);
-            tokenData.claimId.should.equal('0');
-            tokenData.coverAmount.should.be.equal(coverDetails[0].toString());
-            tokenData.coverPrice.should.be.equal(coverDetails[1].toString());
-            tokenData.coverPriceNXM.should.be.equal(coverDetails[2].toString());
-            tokenData.expireTime.should.be.equal(coverDetails[3].toString());
-            tokenData.generationTime.should.be.equal(
-              coverDetails[4].toString()
-            );
+            tokenData.claimId.toString().should.equal('0');
+            tokenData.coverAmount
+              .toString()
+              .should.be.equal(coverDetails[0].toString());
+            tokenData.coverPrice
+              .toString()
+              .should.be.equal(coverDetails[1].toString());
+            tokenData.coverPriceNXM
+              .toString()
+              .should.be.equal(coverDetails[2].toString());
+            tokenData.expireTime
+              .toString()
+              .should.be.equal(coverDetails[3].toString());
+            tokenData.generationTime
+              .toString()
+              .should.be.equal(coverDetails[4].toString());
           });
 
           it('voting should be open', async function() {
