@@ -1,6 +1,6 @@
 const truffleContract = require('truffle-contract');
 
-module.exports.loadCompiledContract = async (
+module.exports.deployCompiledContract = async (
   account,
   contractJson,
   arguments
@@ -30,4 +30,13 @@ module.exports.loadCompiledContract = async (
     gasPrice: 10000000000
   });
   return await contract.at(receipt.contractAddress);
+};
+
+module.exports.linkLibrary = (contractJson, libraryName, libraryAddress) => {
+  // TODO: this probably doesn't work for larger names correctly (truncated)
+
+  const placeholder = `__${libraryName}${'_'.repeat(38 - libraryName.length)}`;
+  contractJson.bytecode = contractJson.bytecode
+    .split(placeholder)
+    .join(libraryAddress.slice(2));
 };

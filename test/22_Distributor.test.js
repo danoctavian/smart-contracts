@@ -29,7 +29,7 @@ const gvProp = require('./utils/gvProposal.js').gvProposal;
 const encode = require('./utils/encoder.js').encode;
 const getQuoteValues = require('./utils/getQuote.js').getQuoteValues;
 const getValue = require('./utils/getMCRPerThreshold.js').getValue;
-const {loadCompiledContract} = require('./utils/contractLoader');
+const {deployCompiledContract, linkLibrary} = require('./utils/contractLoader');
 
 const CA_ETH = '0x45544800';
 const CLA = '0x434c41';
@@ -151,9 +151,21 @@ contract('Distributor buy cover and claim', function([
     p2 = await Pool2.deployed();
     cad = await DAI.deployed();
     dsv = await DSValue.deployed();
-    distributor = await loadCompiledContract(
+
+    const libraryName = 'NXMClient';
+    nxmClientLib = await deployCompiledContract(
       coverHolder,
-      require('/Users/dan/nexusmutualwork/distributor-contract/build/contracts/Distributor.json'),
+      require(`/Users/dan/nexusmutualwork/distributor-contract/build/contracts/${libraryName}.json`),
+      []
+    );
+
+    const distributorContractJSON = require('/Users/dan/nexusmutualwork/distributor-contract/build/contracts/Distributor.json');
+
+    linkLibrary(distributorContractJSON, libraryName, nxmClientLib.address);
+
+    distributor = await deployCompiledContract(
+      coverHolder,
+      distributorContractJSON,
       [nxms.address, priceLoadPercentage]
     );
 
@@ -305,12 +317,11 @@ contract('Distributor buy cover and claim', function([
 
             tokenData.coverId.should.be.equal('1');
             tokenData.claimInProgress.should.be.equal(true);
-            tokenData.coverDetails[0].should.be.equal(
-              coverDetails[0].toString()
-            );
-            tokenData.coverDetails[1].should.be.equal(coverDetails[1]);
-            tokenData.coverDetails[2].should.be.equal(coverDetails[2]);
-            tokenData.coverDetails[3].should.be.equal(coverDetails[3]);
+
+            tokenData.coverAmount.should.be.equal(coverDetails[0].toString());
+            tokenData.coverPrice.should.be.equal(coverDetails[1].toString());
+            tokenData.coverPriceNXM.should.be.equal(coverDetails[2].toString());
+            tokenData.expireTime.should.be.equal(coverDetails[3].toString());
             tokenData.claimId.should.be.equal(claimId.toString());
           });
 
@@ -322,12 +333,13 @@ contract('Distributor buy cover and claim', function([
             tokenData.coverId.should.equal('2');
             tokenData.claimInProgress.should.equal(false);
             tokenData.claimId.should.equal('0');
-            tokenData.coverDetails[0].should.be.equal(
-              coverDetails[0].toString()
+            tokenData.coverAmount.should.be.equal(coverDetails[0].toString());
+            tokenData.coverPrice.should.be.equal(coverDetails[1].toString());
+            tokenData.coverPriceNXM.should.be.equal(coverDetails[2].toString());
+            tokenData.expireTime.should.be.equal(coverDetails[3].toString());
+            tokenData.generationTime.should.be.equal(
+              coverDetails[4].toString()
             );
-            tokenData.coverDetails[1].should.equal(coverDetails[1]);
-            tokenData.coverDetails[2].should.be.equal(coverDetails[2]);
-            tokenData.coverDetails[3].should.be.equal(coverDetails[3]);
           });
 
           it('voting should be open', async function() {
