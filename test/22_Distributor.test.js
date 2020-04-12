@@ -209,12 +209,9 @@ contract('Distributor buy cover and claim', function([
     await tk.approve(tc.address, UNLIMITED_ALLOWANCE, {from: staker1});
     await tk.approve(tc.address, UNLIMITED_ALLOWANCE, {from: staker2});
     await tk.approve(tc.address, UNLIMITED_ALLOWANCE, {from: coverHolder});
-    console.log('approving...');
     await distributor.nxmTokenApprove(tc.address, UNLIMITED_ALLOWANCE, {
       from: coverHolder
     });
-
-    console.log('approved.');
 
     await tk.transfer(member1, ether(250));
     await tk.transfer(member2, ether(250));
