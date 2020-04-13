@@ -312,9 +312,6 @@ contract('Distributor buy cover and claim', function([
           it('should return token data for token with claim in progress', async () => {
             const tokenData = await distributor.tokens.call(firstTokenId);
 
-            console.log(`TOKEN DATA IS:`);
-            console.log(tokenData);
-
             tokenData.coverId.toString().should.be.equal('1');
             tokenData.claimInProgress.should.be.equal(true);
 
@@ -330,9 +327,6 @@ contract('Distributor buy cover and claim', function([
             tokenData.expireTime
               .toString()
               .should.be.equal(coverDetails[3].toString());
-            tokenData.generationTime
-              .toString()
-              .should.be.equal(coverDetails[4].toString());
             tokenData.claimId.toString().should.be.equal(claimId.toString());
           });
 
@@ -708,6 +702,11 @@ contract('Distributor buy cover and claim', function([
             const feeReceiverBalancePreWithdrawal = new web3.utils.BN(
               await cad.balanceOf(distributorFeeReceiver)
             );
+
+            const daiWithdrawableBalanceBefore = await distributor.withdrawableTokens.call(
+              toHex('DAI')
+            );
+
             // 1 cover were bought
             const withdrawnSum = buyCoverDaiFee.toString();
             const r = await distributor.withdrawTokens(
@@ -718,6 +717,9 @@ contract('Distributor buy cover and claim', function([
                 from: coverHolder
               }
             );
+            const daiWithdrawableBalanceAfter = await distributor.withdrawableTokens.call(
+              toHex('DAI')
+            );
 
             const feeReceiverBalancePostWithdrawal = new web3.utils.BN(
               await cad.balanceOf(distributorFeeReceiver)
@@ -726,6 +728,10 @@ contract('Distributor buy cover and claim', function([
               feeReceiverBalancePreWithdrawal
             );
 
+            const withdrawableDiff = daiWithdrawableBalanceBefore.sub(
+              daiWithdrawableBalanceAfter
+            );
+            withdrawableDiff.toString().should.be.equal(withdrawnSum);
             gain.toString().should.be.equal(withdrawnSum);
           });
 
