@@ -152,16 +152,7 @@ contract('Distributor buy cover and claim', function([
     cad = await DAI.deployed();
     dsv = await DSValue.deployed();
 
-    const libraryName = 'NXMClient';
-    nxmClientLib = await deployCompiledContract(
-      coverHolder,
-      require(`/Users/dan/nexusmutualwork/distributor-contract/build/contracts/${libraryName}.json`),
-      []
-    );
-
     const distributorContractJSON = require('/Users/dan/nexusmutualwork/distributor-contract/build/contracts/Distributor.json');
-
-    linkLibrary(distributorContractJSON, libraryName, nxmClientLib.address);
 
     distributor = await deployCompiledContract(
       coverHolder,
