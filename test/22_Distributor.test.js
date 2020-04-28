@@ -457,8 +457,6 @@ contract('Distributor buy cover and claim', function([
     });
 
     describe('accepted claim', function() {
-      let initialStakedTokens1;
-      let initialStakedTokens2;
       let priceinEther;
       before(async function() {
         const now = await latestTime();
@@ -476,7 +474,7 @@ contract('Distributor buy cover and claim', function([
         claimId = (await cd.actualClaimLength()) - 1;
       });
 
-      it('should let claim assessor to vote for claim assessment', async function() {
+      it('should allow approve voting', async function() {
         await cl.submitCAVote(claimId, 1, {from: member1});
         await cl.submitCAVote(claimId, 1, {from: member2});
         await cl.submitCAVote(claimId, 1, {from: member3});
@@ -486,9 +484,7 @@ contract('Distributor buy cover and claim', function([
         await cd.getVoteVoter(claimId, 1, 1);
         let verdict = await cd.getVoteVerdict(claimId, 1, 1);
         parseFloat(verdict).should.be.equal(1);
-      });
 
-      it('should not able to vote after voting closed', async function() {
         const now = await latestTime();
         const maxVotingTime = await cd.maxVotingTime();
         closingTime = new BN(maxVotingTime.toString()).add(
@@ -497,10 +493,7 @@ contract('Distributor buy cover and claim', function([
         await increaseTimeTo(
           new BN(closingTime.toString()).add(new BN((6).toString()))
         );
-        await assertRevert(cl.submitCAVote(claimId, 1, {from: member1}));
-      });
 
-      it('should be able to change claim status', async function() {
         const apiCallLength = (await pd.getApilCallLength()) - 1;
         let apiid = await pd.allAPIcall(apiCallLength);
 
@@ -513,9 +506,7 @@ contract('Distributor buy cover and claim', function([
 
         claimData.finalVerdict.toString().should.be.equal((1).toString());
         claimData.status.toString().should.be.equal((7).toString());
-      });
 
-      it('voting should be closed', async function() {
         (await cl.checkVoteClosing(claimId))
           .toString()
           .should.be.equal((-1).toString());
@@ -619,7 +610,7 @@ contract('Distributor buy cover and claim', function([
           .should.be.equal((0).toString());
       });
 
-      it('should let claim assessor to vote for claim assessment', async function() {
+      it('should allow approval voting', async function() {
         await cl.submitCAVote(claimId, 1, {from: member1});
         await cl.submitCAVote(claimId, 1, {from: member2});
         await cl.submitCAVote(claimId, 1, {from: member3});
@@ -629,9 +620,7 @@ contract('Distributor buy cover and claim', function([
         await cd.getVoteVoter(claimId, 1, 1);
         let verdict = await cd.getVoteVerdict(claimId, 1, 1);
         parseFloat(verdict).should.be.equal(1);
-      });
 
-      it('should not able to vote after voting closed', async function() {
         const now = await latestTime();
         const maxVotingTime = await cd.maxVotingTime();
         closingTime = new BN(maxVotingTime.toString()).add(
@@ -641,29 +630,21 @@ contract('Distributor buy cover and claim', function([
           new BN(closingTime.toString()).add(new BN((6).toString()))
         );
 
-        await assertRevert(cl.submitCAVote(claimId, 1, {from: member1}));
-      });
-
-      it('oraclise call should be able to change claim status', async function() {
-        const oldClaimStatus = await cd.getClaimStatusNumber(claimId);
+        // change claim status
         let apiid = await pd.allAPIcall((await pd.getApilCallLength()) - 1);
         priceinEther = await mcr.calculateTokenPrice(CA_ETH);
         await P1.__callback(apiid, '');
         const newCStatus = await cd.getClaimStatusNumber(claimId);
         newCStatus[1].toString().should.be.equal((12).toString());
-      });
 
-      it('oraclise call should be able to trigger payout', async function() {
-        const oldClaimStatus = await cd.getClaimStatusNumber(claimId);
-        let apiid = await pd.allAPIcall((await pd.getApilCallLength()) - 1);
+        // trigger payout
+        let apiid2 = await pd.allAPIcall((await pd.getApilCallLength()) - 1);
         priceinEther = await mcr.calculateTokenPrice(CA_ETH);
         await cad.transfer(P1.address, toWei(20));
-        await P1.__callback(apiid, '');
-        const newCStatus = await cd.getClaimStatusNumber(claimId);
-        newCStatus[1].toString().should.be.equal((14).toString());
-      });
+        await P1.__callback(apiid2, '');
+        const newCStatus2 = await cd.getClaimStatusNumber(claimId);
+        newCStatus2[1].toString().should.be.equal((14).toString());
 
-      it('voting should be closed', async function() {
         (await cl.checkVoteClosing(claimId))
           .toString()
           .should.be.equal((-1).toString());
