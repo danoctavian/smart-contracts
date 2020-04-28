@@ -216,10 +216,10 @@ contract('Distributor buy cover and claim', function([
     maxVotingTime = await cd.maxVotingTime();
   });
 
-  describe('Distributor ETH cover', function() {
+  describe('ETH cover', function() {
     let firstTokenId;
     let secondTokenId;
-    describe('All CAs rejects claim', function() {
+    describe('rejected claim', function() {
       before(async function() {
         await tc.lock(CLA, tokens, validity, {
           from: member1
@@ -456,7 +456,7 @@ contract('Distributor buy cover and claim', function([
       });
     });
 
-    describe('All CAs accept claim', function() {
+    describe('accepted claim', function() {
       let initialStakedTokens1;
       let initialStakedTokens2;
       let priceinEther;
@@ -562,189 +562,181 @@ contract('Distributor buy cover and claim', function([
     });
   });
 
-  describe('Dai Cover - Member locked Tokens for Claim Assessment', function() {
-    describe('Voting is not closed yet', function() {
-      describe('CA not voted yet', function() {
-        let firstTokenId;
-        describe('All CAs accept claim', function() {
-          before(async function() {
-            let now1 = await latestTime();
-            await increaseTimeTo(
-              new BN(BOOK_TIME.toString()).add(new BN(now1.toString()))
-            );
+  describe('DAI Cover', function() {
+    let firstTokenId;
+    describe('accepted claim', function() {
+      before(async function() {
+        let now1 = await latestTime();
+        await increaseTimeTo(
+          new BN(BOOK_TIME.toString()).add(new BN(now1.toString()))
+        );
 
-            await cad.transfer(nftCoverHolder1, toWei(2000));
+        await cad.transfer(nftCoverHolder1, toWei(2000));
 
-            await cad.approve(distributor.address, buyCoverDaiValue, {
-              from: nftCoverHolder1
-            });
-            coverDetailsDai[4] = 7972408607006;
-            var vrsdata = await getQuoteValues(
-              coverDetailsDai,
-              toHex('DAI'),
-              coverPeriod,
-              smartConAdd,
-              qt.address
-            );
-
-            const buyCoverUsingCAResponse = await distributor.buyCover(
-              smartConAdd,
-              toHex('DAI'),
-              coverDetailsDai,
-              coverPeriod,
-              vrsdata[0],
-              vrsdata[1],
-              vrsdata[2],
-              {from: nftCoverHolder1}
-            );
-
-            firstTokenId = getCoverDataFromBuyCoverLogs(
-              buyCoverUsingCAResponse.logs
-            ).tokenId;
-
-            await distributor.submitClaim(firstTokenId, {
-              from: nftCoverHolder1
-            });
-
-            const minVotingTime = await cd.minVotingTime();
-            now2 = await latestTime();
-            minTime = new BN(minVotingTime.toString()).add(
-              new BN(now2.toString())
-            );
-            await cl.getClaimFromNewStart(0, {from: member1});
-            await cl.getUserClaimByIndex(0, {from: distributor.address});
-            await cl.getClaimbyIndex(1, {from: distributor.address});
-            claimId = (await cd.actualClaimLength()) - 1;
-          });
-
-          it('voting should be open', async function() {
-            (await cl.checkVoteClosing(claimId))
-              .toString()
-              .should.be.equal((0).toString());
-          });
-
-          it('should let claim assessor to vote for claim assessment', async function() {
-            await cl.submitCAVote(claimId, 1, {from: member1});
-            await cl.submitCAVote(claimId, 1, {from: member2});
-            await cl.submitCAVote(claimId, 1, {from: member3});
-            await cl.getClaimFromNewStart(0, {from: member1});
-            await cl.getClaimFromNewStart(1, {from: member1});
-            await cd.getVoteToken(claimId, 0, 1);
-            await cd.getVoteVoter(claimId, 1, 1);
-            let verdict = await cd.getVoteVerdict(claimId, 1, 1);
-            parseFloat(verdict).should.be.equal(1);
-          });
-
-          it('should not able to vote after voting closed', async function() {
-            const now = await latestTime();
-            const maxVotingTime = await cd.maxVotingTime();
-            closingTime = new BN(maxVotingTime.toString()).add(
-              new BN(now.toString())
-            );
-            await increaseTimeTo(
-              new BN(closingTime.toString()).add(new BN((6).toString()))
-            );
-
-            await assertRevert(cl.submitCAVote(claimId, 1, {from: member1}));
-          });
-
-          it('oraclise call should be able to change claim status', async function() {
-            const oldClaimStatus = await cd.getClaimStatusNumber(claimId);
-            let apiid = await pd.allAPIcall((await pd.getApilCallLength()) - 1);
-            priceinEther = await mcr.calculateTokenPrice(CA_ETH);
-            await P1.__callback(apiid, '');
-            const newCStatus = await cd.getClaimStatusNumber(claimId);
-            newCStatus[1].toString().should.be.equal((12).toString());
-          });
-
-          it('oraclise call should be able to trigger payout', async function() {
-            const oldClaimStatus = await cd.getClaimStatusNumber(claimId);
-            let apiid = await pd.allAPIcall((await pd.getApilCallLength()) - 1);
-            priceinEther = await mcr.calculateTokenPrice(CA_ETH);
-            await cad.transfer(P1.address, toWei(20));
-            await P1.__callback(apiid, '');
-            const newCStatus = await cd.getClaimStatusNumber(claimId);
-            newCStatus[1].toString().should.be.equal((14).toString());
-          });
-
-          it('voting should be closed', async function() {
-            (await cl.checkVoteClosing(claimId))
-              .toString()
-              .should.be.equal((-1).toString());
-          });
-
-          it('should be able to withdraw DAI fee from all bought covers', async function() {
-            const feeReceiverBalancePreWithdrawal = new web3.utils.BN(
-              await cad.balanceOf(distributorFeeReceiver)
-            );
-
-            const daiWithdrawableBalanceBefore = await distributor.withdrawableTokens.call(
-              toHex('DAI')
-            );
-
-            // 1 cover were bought
-            const withdrawnSum = buyCoverDaiFee.toString();
-            const r = await distributor.withdrawTokens(
-              distributorFeeReceiver,
-              withdrawnSum,
-              toHex('DAI'),
-              {
-                from: coverHolder
-              }
-            );
-            const daiWithdrawableBalanceAfter = await distributor.withdrawableTokens.call(
-              toHex('DAI')
-            );
-
-            const feeReceiverBalancePostWithdrawal = new web3.utils.BN(
-              await cad.balanceOf(distributorFeeReceiver)
-            );
-            const gain = feeReceiverBalancePostWithdrawal.sub(
-              feeReceiverBalancePreWithdrawal
-            );
-
-            const withdrawableDiff = daiWithdrawableBalanceBefore.sub(
-              daiWithdrawableBalanceAfter
-            );
-            withdrawableDiff.toString().should.be.equal(withdrawnSum);
-            gain.toString().should.be.equal(withdrawnSum);
-          });
-
-          it('token owner should be able to redeem claim', async function() {
-            const balancePreRedeem = new web3.utils.BN(
-              await cad.balanceOf(nftCoverHolder1)
-            );
-            const redeemClaimsResponse = await distributor.redeemClaim(
-              firstTokenId,
-              {
-                from: nftCoverHolder1
-              }
-            );
-            const logs = Array.from(redeemClaimsResponse.logs);
-            const claimRedeemedEvent = logs.filter(
-              log => log.event === 'ClaimRedeemed'
-            )[0];
-
-            const expectedTotalClaimValue = new web3.utils.BN(
-              coverDetailsDai[0]
-            );
-
-            claimRedeemedEvent.args.receiver.should.be.equal(nftCoverHolder1);
-            claimRedeemedEvent.args.value
-              .toString()
-              .should.be.equal(expectedTotalClaimValue.toString());
-
-            const balancePostRedeem = new web3.utils.BN(
-              await cad.balanceOf(nftCoverHolder1)
-            );
-
-            const balanceGain = balancePostRedeem.sub(balancePreRedeem);
-
-            balanceGain
-              .toString()
-              .should.be.equal(expectedTotalClaimValue.toString());
-          });
+        await cad.approve(distributor.address, buyCoverDaiValue, {
+          from: nftCoverHolder1
         });
+        coverDetailsDai[4] = 7972408607006;
+        var vrsdata = await getQuoteValues(
+          coverDetailsDai,
+          toHex('DAI'),
+          coverPeriod,
+          smartConAdd,
+          qt.address
+        );
+
+        const buyCoverUsingCAResponse = await distributor.buyCover(
+          smartConAdd,
+          toHex('DAI'),
+          coverDetailsDai,
+          coverPeriod,
+          vrsdata[0],
+          vrsdata[1],
+          vrsdata[2],
+          {from: nftCoverHolder1}
+        );
+
+        firstTokenId = getCoverDataFromBuyCoverLogs(
+          buyCoverUsingCAResponse.logs
+        ).tokenId;
+
+        await distributor.submitClaim(firstTokenId, {
+          from: nftCoverHolder1
+        });
+
+        const minVotingTime = await cd.minVotingTime();
+        now2 = await latestTime();
+        minTime = new BN(minVotingTime.toString()).add(new BN(now2.toString()));
+        await cl.getClaimFromNewStart(0, {from: member1});
+        await cl.getUserClaimByIndex(0, {from: distributor.address});
+        await cl.getClaimbyIndex(1, {from: distributor.address});
+        claimId = (await cd.actualClaimLength()) - 1;
+      });
+
+      it('voting should be open', async function() {
+        (await cl.checkVoteClosing(claimId))
+          .toString()
+          .should.be.equal((0).toString());
+      });
+
+      it('should let claim assessor to vote for claim assessment', async function() {
+        await cl.submitCAVote(claimId, 1, {from: member1});
+        await cl.submitCAVote(claimId, 1, {from: member2});
+        await cl.submitCAVote(claimId, 1, {from: member3});
+        await cl.getClaimFromNewStart(0, {from: member1});
+        await cl.getClaimFromNewStart(1, {from: member1});
+        await cd.getVoteToken(claimId, 0, 1);
+        await cd.getVoteVoter(claimId, 1, 1);
+        let verdict = await cd.getVoteVerdict(claimId, 1, 1);
+        parseFloat(verdict).should.be.equal(1);
+      });
+
+      it('should not able to vote after voting closed', async function() {
+        const now = await latestTime();
+        const maxVotingTime = await cd.maxVotingTime();
+        closingTime = new BN(maxVotingTime.toString()).add(
+          new BN(now.toString())
+        );
+        await increaseTimeTo(
+          new BN(closingTime.toString()).add(new BN((6).toString()))
+        );
+
+        await assertRevert(cl.submitCAVote(claimId, 1, {from: member1}));
+      });
+
+      it('oraclise call should be able to change claim status', async function() {
+        const oldClaimStatus = await cd.getClaimStatusNumber(claimId);
+        let apiid = await pd.allAPIcall((await pd.getApilCallLength()) - 1);
+        priceinEther = await mcr.calculateTokenPrice(CA_ETH);
+        await P1.__callback(apiid, '');
+        const newCStatus = await cd.getClaimStatusNumber(claimId);
+        newCStatus[1].toString().should.be.equal((12).toString());
+      });
+
+      it('oraclise call should be able to trigger payout', async function() {
+        const oldClaimStatus = await cd.getClaimStatusNumber(claimId);
+        let apiid = await pd.allAPIcall((await pd.getApilCallLength()) - 1);
+        priceinEther = await mcr.calculateTokenPrice(CA_ETH);
+        await cad.transfer(P1.address, toWei(20));
+        await P1.__callback(apiid, '');
+        const newCStatus = await cd.getClaimStatusNumber(claimId);
+        newCStatus[1].toString().should.be.equal((14).toString());
+      });
+
+      it('voting should be closed', async function() {
+        (await cl.checkVoteClosing(claimId))
+          .toString()
+          .should.be.equal((-1).toString());
+      });
+
+      it('should be able to withdraw DAI fee from all bought covers', async function() {
+        const feeReceiverBalancePreWithdrawal = new web3.utils.BN(
+          await cad.balanceOf(distributorFeeReceiver)
+        );
+
+        const daiWithdrawableBalanceBefore = await distributor.withdrawableTokens.call(
+          toHex('DAI')
+        );
+
+        // 1 cover were bought
+        const withdrawnSum = buyCoverDaiFee.toString();
+        const r = await distributor.withdrawTokens(
+          distributorFeeReceiver,
+          withdrawnSum,
+          toHex('DAI'),
+          {
+            from: coverHolder
+          }
+        );
+        const daiWithdrawableBalanceAfter = await distributor.withdrawableTokens.call(
+          toHex('DAI')
+        );
+
+        const feeReceiverBalancePostWithdrawal = new web3.utils.BN(
+          await cad.balanceOf(distributorFeeReceiver)
+        );
+        const gain = feeReceiverBalancePostWithdrawal.sub(
+          feeReceiverBalancePreWithdrawal
+        );
+
+        const withdrawableDiff = daiWithdrawableBalanceBefore.sub(
+          daiWithdrawableBalanceAfter
+        );
+        withdrawableDiff.toString().should.be.equal(withdrawnSum);
+        gain.toString().should.be.equal(withdrawnSum);
+      });
+
+      it('token owner should be able to redeem claim', async function() {
+        const balancePreRedeem = new web3.utils.BN(
+          await cad.balanceOf(nftCoverHolder1)
+        );
+        const redeemClaimsResponse = await distributor.redeemClaim(
+          firstTokenId,
+          {
+            from: nftCoverHolder1
+          }
+        );
+        const logs = Array.from(redeemClaimsResponse.logs);
+        const claimRedeemedEvent = logs.filter(
+          log => log.event === 'ClaimRedeemed'
+        )[0];
+
+        const expectedTotalClaimValue = new web3.utils.BN(coverDetailsDai[0]);
+
+        claimRedeemedEvent.args.receiver.should.be.equal(nftCoverHolder1);
+        claimRedeemedEvent.args.value
+          .toString()
+          .should.be.equal(expectedTotalClaimValue.toString());
+
+        const balancePostRedeem = new web3.utils.BN(
+          await cad.balanceOf(nftCoverHolder1)
+        );
+
+        const balanceGain = balancePostRedeem.sub(balancePreRedeem);
+
+        balanceGain
+          .toString()
+          .should.be.equal(expectedTotalClaimValue.toString());
       });
     });
   });
