@@ -216,360 +216,348 @@ contract('Distributor buy cover and claim', function([
     maxVotingTime = await cd.maxVotingTime();
   });
 
-  describe('Member locked Tokens for Claim Assessment', function() {
-    describe('Voting is not closed yet', function() {
-      describe('CA not voted yet', function() {
-        let firstTokenId;
-        let secondTokenId;
-        describe('All CAs rejects claim', function() {
-          before(async function() {
-            await tc.lock(CLA, tokens, validity, {
-              from: member1
-            });
-            await tc.lock(CLA, tokens, validity, {
-              from: member2
-            });
-            await tc.lock(CLA, tokens, validity, {
-              from: member3
-            });
-          });
+  describe('Distributor ETH cover', function() {
+    let firstTokenId;
+    let secondTokenId;
+    describe('All CAs rejects claim', function() {
+      before(async function() {
+        await tc.lock(CLA, tokens, validity, {
+          from: member1
+        });
+        await tc.lock(CLA, tokens, validity, {
+          from: member2
+        });
+        await tc.lock(CLA, tokens, validity, {
+          from: member3
+        });
+      });
 
-          it('allows buying cover using ETH', async () => {
-            coverDetails[4] = '7972408607001';
-            var vrsdata = await getQuoteValues(
-              coverDetails,
-              toHex('ETH'),
-              coverPeriod,
-              smartConAdd,
-              qt.address
-            );
+      it('allows buying cover using ETH', async () => {
+        coverDetails[4] = '7972408607001';
+        var vrsdata = await getQuoteValues(
+          coverDetails,
+          toHex('ETH'),
+          coverPeriod,
+          smartConAdd,
+          qt.address
+        );
 
-            const buyCoverResponse1 = await distributor.buyCover(
-              smartConAdd,
-              toHex('ETH'),
-              coverDetails,
-              coverPeriod,
-              vrsdata[0],
-              vrsdata[1],
-              vrsdata[2],
-              {from: nftCoverHolder1, value: buyCoverValue.toString()}
-            );
+        const buyCoverResponse1 = await distributor.buyCover(
+          smartConAdd,
+          toHex('ETH'),
+          coverDetails,
+          coverPeriod,
+          vrsdata[0],
+          vrsdata[1],
+          vrsdata[2],
+          {from: nftCoverHolder1, value: buyCoverValue.toString()}
+        );
 
-            firstTokenId = getCoverDataFromBuyCoverLogs(buyCoverResponse1.logs)
-              .tokenId;
-          });
+        firstTokenId = getCoverDataFromBuyCoverLogs(buyCoverResponse1.logs)
+          .tokenId;
+      });
 
-          it('allows buying a second cover after buying 1 already', async () => {
-            coverDetails[4] = '7972408607002';
-            vrsdata = await getQuoteValues(
-              coverDetails,
-              toHex('ETH'),
-              coverPeriod,
-              smartConAdd,
-              qt.address
-            );
+      it('allows buying a second cover after buying 1 already', async () => {
+        coverDetails[4] = '7972408607002';
+        vrsdata = await getQuoteValues(
+          coverDetails,
+          toHex('ETH'),
+          coverPeriod,
+          smartConAdd,
+          qt.address
+        );
 
-            const buyCoverResponse2 = await distributor.buyCover(
-              smartConAdd,
-              toHex('ETH'),
-              coverDetails,
-              coverPeriod,
-              vrsdata[0],
-              vrsdata[1],
-              vrsdata[2],
-              {from: nftCoverHolder1, value: buyCoverValue.toString()}
-            );
+        const buyCoverResponse2 = await distributor.buyCover(
+          smartConAdd,
+          toHex('ETH'),
+          coverDetails,
+          coverPeriod,
+          vrsdata[0],
+          vrsdata[1],
+          vrsdata[2],
+          {from: nftCoverHolder1, value: buyCoverValue.toString()}
+        );
 
-            secondTokenId = getCoverDataFromBuyCoverLogs(buyCoverResponse2.logs)
-              .tokenId;
-          });
+        secondTokenId = getCoverDataFromBuyCoverLogs(buyCoverResponse2.logs)
+          .tokenId;
+      });
 
-          it('allows submitting a claim for the cover', async () => {
-            await distributor.submitClaim(firstTokenId, {
-              from: nftCoverHolder1
-            });
-
-            const minVotingTime = await cd.minVotingTime();
-            const now = await latestTime();
-            minTime = new BN(minVotingTime.toString()).add(
-              new BN(now.toString())
-            );
-            await cl.getClaimFromNewStart(0, {from: member1});
-            await cl.getUserClaimByIndex(0, {from: distributor.address});
-            await cl.getClaimbyIndex(1, {from: distributor.address});
-            claimId = (await cd.actualClaimLength()) - 1;
-          });
-
-          it('fails to submit another claim once a claim is currently in progress for a token', async () => {
-            await assertRevert(
-              distributor.submitClaim(firstTokenId, {
-                from: nftCoverHolder1
-              })
-            );
-          });
-
-          it('should return token data for token with claim in progress', async () => {
-            const tokenData = await distributor.tokens.call(firstTokenId);
-
-            tokenData.coverId.toString().should.be.equal('1');
-            tokenData.claimInProgress.should.be.equal(true);
-
-            tokenData.coverAmount
-              .toString()
-              .should.be.equal(coverDetails[0].toString());
-            tokenData.coverPrice
-              .toString()
-              .should.be.equal(coverDetails[1].toString());
-            tokenData.coverPriceNXM
-              .toString()
-              .should.be.equal(coverDetails[2].toString());
-            tokenData.expireTime
-              .toString()
-              .should.be.equal(coverDetails[3].toString());
-            tokenData.claimId.toString().should.be.equal(claimId.toString());
-          });
-
-          it('should return token data for token with no claim in progress', async () => {
-            const tokenData = await distributor.tokens.call(secondTokenId);
-
-            tokenData.coverId.toString().should.equal('2');
-            tokenData.claimInProgress.should.equal(false);
-            tokenData.claimId.toString().should.equal('0');
-            tokenData.coverAmount
-              .toString()
-              .should.be.equal(coverDetails[0].toString());
-            tokenData.coverPrice
-              .toString()
-              .should.be.equal(coverDetails[1].toString());
-            tokenData.coverPriceNXM
-              .toString()
-              .should.be.equal(coverDetails[2].toString());
-            tokenData.expireTime
-              .toString()
-              .should.be.equal(coverDetails[3].toString());
-            tokenData.generationTime
-              .toString()
-              .should.be.equal(coverDetails[4].toString());
-          });
-
-          it('should allow voting rejection', async function() {
-            (await cl.checkVoteClosing(claimId))
-              .toString()
-              .should.be.equal((0).toString());
-
-            let initialCAVoteTokens = await cd.getCaClaimVotesToken(claimId);
-            await cl.submitCAVote(claimId, -1, {from: member1});
-            await cl.submitCAVote(claimId, -1, {from: member2});
-            await cl.submitCAVote(claimId, -1, {from: member3});
-            let finalCAVoteTokens = await cd.getCaClaimVotesToken(claimId);
-            (finalCAVoteTokens[1] - initialCAVoteTokens[1]).should.be.equal(
-              tokens * 3
-            );
-            let all_votes = await cd.getAllVotesForClaim(claimId);
-            expectedVotes = all_votes[1].length;
-            expectedVotes.should.be.equal(3);
-            let isBooked = await td.isCATokensBooked(member1);
-            isBooked.should.be.equal(true);
-
-            await increaseTimeTo(
-              new BN(minTime.toString()).add(new BN((2).toString()))
-            );
-            (await cl.checkVoteClosing(claimId))
-              .toString()
-              .should.be.equal((1).toString());
-
-            const apiCallId = (await pd.getApilCallLength()) - 1;
-            APIID = await pd.allAPIcall(apiCallId);
-            await P1.__callback(APIID, '');
-            const newCStatus = await cd.getClaimStatusNumber(claimId);
-            newCStatus[1].toString().should.be.equal((6).toString());
-
-            (await cl.checkVoteClosing(claimId))
-              .toString()
-              .should.be.equal((-1).toString());
-          });
-
-          it('distributor owner should be able to withdraw ETH fee from all bought covers', async function() {
-            const feeReceiverBalancePreWithdrawal = new web3.utils.BN(
-              await web3.eth.getBalance(distributorFeeReceiver)
-            );
-
-            // 2 covers were bought
-            const withdrawnSum = buyCoverFee
-              .mul(new web3.utils.BN(2))
-              .toString();
-            const r = await distributor.withdrawEther(
-              distributorFeeReceiver,
-              withdrawnSum,
-              {
-                from: coverHolder
-              }
-            );
-
-            const feeReceiverBalancePostWithdrawal = new web3.utils.BN(
-              await web3.eth.getBalance(distributorFeeReceiver)
-            );
-            const gain = feeReceiverBalancePostWithdrawal.sub(
-              feeReceiverBalancePreWithdrawal
-            );
-            gain.toString().should.be.equal(withdrawnSum);
-          });
-
-          it('cover holder should not be able to redeemClaim', async function() {
-            await assertRevert(
-              distributor.redeemClaim(firstTokenId, {
-                from: nftCoverHolder1
-              })
-            );
-          });
-
-          // it('should be able to to submit a second claim for the same cover after the first rejection', async () => {
-          //
-          //   const tokenData = await distributor.tokens.call(firstTokenId);
-          //
-          //
-          //   const values = await qd.getCoverDetailsByCoverID2(tokenData.coverId.toString());
-          //   console.log(`##### cover details`)
-          //   console.log(values);
-          //
-          //   await distributor.submitClaim(firstTokenId, {
-          //     from: nftCoverHolder1
-          //   });
-          // })
-
-          it('distributor is able sell NXM tokens for ETH', async function() {
-            const maxSellTokens = await mcr.getMaxSellTokens();
-            const sellAmount = maxSellTokens;
-            const withdrawableETHPreSale = await distributor.withdrawableTokens.call(
-              toHex('ETH')
-            );
-            const balancePreSale = await web3.eth.getBalance(
-              distributor.address
-            );
-            await distributor.sellNXMTokens(sellAmount, {
-              from: coverHolder
-            });
-            const withdrawableETHPostSale = await distributor.withdrawableTokens.call(
-              toHex('ETH')
-            );
-            const balancePostSale = await web3.eth.getBalance(
-              distributor.address
-            );
-
-            const balanceGain = new web3.utils.BN(balancePostSale).sub(
-              new web3.utils.BN(balancePreSale)
-            );
-            const withdrawableGain = withdrawableETHPostSale.sub(
-              withdrawableETHPreSale
-            );
-            withdrawableGain.toString().should.be.equal(balanceGain.toString());
-          });
+      it('allows submitting a claim for the cover', async () => {
+        await distributor.submitClaim(firstTokenId, {
+          from: nftCoverHolder1
         });
 
-        describe('All CAs accept claim', function() {
-          let initialStakedTokens1;
-          let initialStakedTokens2;
-          let priceinEther;
-          before(async function() {
-            const now = await latestTime();
-            await increaseTimeTo(
-              new BN(BOOK_TIME.toString()).add(new BN(now.toString()))
-            );
-          });
+        const minVotingTime = await cd.minVotingTime();
+        const now = await latestTime();
+        minTime = new BN(minVotingTime.toString()).add(new BN(now.toString()));
+        await cl.getClaimFromNewStart(0, {from: member1});
+        await cl.getUserClaimByIndex(0, {from: distributor.address});
+        await cl.getClaimbyIndex(1, {from: distributor.address});
+        claimId = (await cd.actualClaimLength()) - 1;
+      });
 
-          it('should allow submitting a claim for a second token', async function() {
-            await distributor.submitClaim(secondTokenId, {
-              from: nftCoverHolder1
-            });
+      it('fails to submit another claim once a claim is currently in progress for a token', async () => {
+        await assertRevert(
+          distributor.submitClaim(firstTokenId, {
+            from: nftCoverHolder1
+          })
+        );
+      });
 
-            coverID = await qd.getAllCoversOfUser(distributor.address);
-            claimId = (await cd.actualClaimLength()) - 1;
-          });
+      it('should return token data for token with claim in progress', async () => {
+        const tokenData = await distributor.tokens.call(firstTokenId);
 
-          it('should let claim assessor to vote for claim assessment', async function() {
-            await cl.submitCAVote(claimId, 1, {from: member1});
-            await cl.submitCAVote(claimId, 1, {from: member2});
-            await cl.submitCAVote(claimId, 1, {from: member3});
-            await cl.getClaimFromNewStart(0, {from: member1});
-            await cl.getClaimFromNewStart(1, {from: member1});
-            await cd.getVoteToken(claimId, 0, 1);
-            await cd.getVoteVoter(claimId, 1, 1);
-            let verdict = await cd.getVoteVerdict(claimId, 1, 1);
-            parseFloat(verdict).should.be.equal(1);
-          });
+        tokenData.coverId.toString().should.be.equal('1');
+        tokenData.claimInProgress.should.be.equal(true);
 
-          it('should not able to vote after voting closed', async function() {
-            const now = await latestTime();
-            const maxVotingTime = await cd.maxVotingTime();
-            closingTime = new BN(maxVotingTime.toString()).add(
-              new BN(now.toString())
-            );
-            await increaseTimeTo(
-              new BN(closingTime.toString()).add(new BN((6).toString()))
-            );
-            await assertRevert(cl.submitCAVote(claimId, 1, {from: member1}));
-          });
+        tokenData.coverAmount
+          .toString()
+          .should.be.equal(coverDetails[0].toString());
+        tokenData.coverPrice
+          .toString()
+          .should.be.equal(coverDetails[1].toString());
+        tokenData.coverPriceNXM
+          .toString()
+          .should.be.equal(coverDetails[2].toString());
+        tokenData.expireTime
+          .toString()
+          .should.be.equal(coverDetails[3].toString());
+        tokenData.claimId.toString().should.be.equal(claimId.toString());
+      });
 
-          it('should be able to change claim status', async function() {
-            const apiCallLength = (await pd.getApilCallLength()) - 1;
-            let apiid = await pd.allAPIcall(apiCallLength);
+      it('should return token data for token with no claim in progress', async () => {
+        const tokenData = await distributor.tokens.call(secondTokenId);
 
-            // let apiid = await pd.allAPIcall((await pd.getApilCallLength()) - 1);
-            priceinEther = await mcr.calculateTokenPrice(CA_ETH);
-            await P1.__callback(apiid, '');
-            const newCStatus = await cd.getClaimStatusNumber(claimId);
-            newCStatus[1].toString().should.be.equal((7).toString());
-            const claimData = await cl.getClaimbyIndex(claimId);
+        tokenData.coverId.toString().should.equal('2');
+        tokenData.claimInProgress.should.equal(false);
+        tokenData.claimId.toString().should.equal('0');
+        tokenData.coverAmount
+          .toString()
+          .should.be.equal(coverDetails[0].toString());
+        tokenData.coverPrice
+          .toString()
+          .should.be.equal(coverDetails[1].toString());
+        tokenData.coverPriceNXM
+          .toString()
+          .should.be.equal(coverDetails[2].toString());
+        tokenData.expireTime
+          .toString()
+          .should.be.equal(coverDetails[3].toString());
+        tokenData.generationTime
+          .toString()
+          .should.be.equal(coverDetails[4].toString());
+      });
 
-            claimData.finalVerdict.toString().should.be.equal((1).toString());
-            claimData.status.toString().should.be.equal((7).toString());
-          });
+      it('should allow voting rejection', async function() {
+        (await cl.checkVoteClosing(claimId))
+          .toString()
+          .should.be.equal((0).toString());
 
-          it('voting should be closed', async function() {
-            (await cl.checkVoteClosing(claimId))
-              .toString()
-              .should.be.equal((-1).toString());
-          });
+        let initialCAVoteTokens = await cd.getCaClaimVotesToken(claimId);
+        await cl.submitCAVote(claimId, -1, {from: member1});
+        await cl.submitCAVote(claimId, -1, {from: member2});
+        await cl.submitCAVote(claimId, -1, {from: member3});
+        let finalCAVoteTokens = await cd.getCaClaimVotesToken(claimId);
+        (finalCAVoteTokens[1] - initialCAVoteTokens[1]).should.be.equal(
+          tokens * 3
+        );
+        let all_votes = await cd.getAllVotesForClaim(claimId);
+        expectedVotes = all_votes[1].length;
+        expectedVotes.should.be.equal(3);
+        let isBooked = await td.isCATokensBooked(member1);
+        isBooked.should.be.equal(true);
 
-          it('token owner should be able to redeem claim', async function() {
-            const balancePreRedeem = new web3.utils.BN(
-              await web3.eth.getBalance(nftCoverHolder1)
-            );
-            const redeemClaimsResponse = await distributor.redeemClaim(
-              secondTokenId,
-              {
-                from: nftCoverHolder1
-              }
-            );
-            const logs = Array.from(redeemClaimsResponse.logs);
-            const claimRedeemedEvent = logs.filter(
-              log => log.event === 'ClaimRedeemed'
-            )[0];
+        await increaseTimeTo(
+          new BN(minTime.toString()).add(new BN((2).toString()))
+        );
+        (await cl.checkVoteClosing(claimId))
+          .toString()
+          .should.be.equal((1).toString());
 
-            const expectedTotalClaimValue = new web3.utils.BN(coverDetails[0]);
+        const apiCallId = (await pd.getApilCallLength()) - 1;
+        APIID = await pd.allAPIcall(apiCallId);
+        await P1.__callback(APIID, '');
+        const newCStatus = await cd.getClaimStatusNumber(claimId);
+        newCStatus[1].toString().should.be.equal((6).toString());
 
-            claimRedeemedEvent.args.receiver.should.be.equal(nftCoverHolder1);
-            claimRedeemedEvent.args.value
-              .toString()
-              .should.be.equal(expectedTotalClaimValue.toString());
+        (await cl.checkVoteClosing(claimId))
+          .toString()
+          .should.be.equal((-1).toString());
+      });
 
-            const balancePostRedeem = new web3.utils.BN(
-              await web3.eth.getBalance(nftCoverHolder1)
-            );
+      it('distributor owner should be able to withdraw ETH fee from all bought covers', async function() {
+        const feeReceiverBalancePreWithdrawal = new web3.utils.BN(
+          await web3.eth.getBalance(distributorFeeReceiver)
+        );
 
-            const tx = await web3.eth.getTransaction(redeemClaimsResponse.tx);
-            const gasCost = new web3.utils.BN(tx.gasPrice).mul(
-              new web3.utils.BN(redeemClaimsResponse.receipt.gasUsed)
-            );
-            const balanceGain = balancePostRedeem
-              .add(gasCost)
-              .sub(balancePreRedeem);
+        // 2 covers were bought
+        const withdrawnSum = buyCoverFee.mul(new web3.utils.BN(2)).toString();
+        const r = await distributor.withdrawEther(
+          distributorFeeReceiver,
+          withdrawnSum,
+          {
+            from: coverHolder
+          }
+        );
 
-            balanceGain
-              .toString()
-              .should.be.equal(expectedTotalClaimValue.toString());
-          });
+        const feeReceiverBalancePostWithdrawal = new web3.utils.BN(
+          await web3.eth.getBalance(distributorFeeReceiver)
+        );
+        const gain = feeReceiverBalancePostWithdrawal.sub(
+          feeReceiverBalancePreWithdrawal
+        );
+        gain.toString().should.be.equal(withdrawnSum);
+      });
+
+      it('cover holder should not be able to redeemClaim', async function() {
+        await assertRevert(
+          distributor.redeemClaim(firstTokenId, {
+            from: nftCoverHolder1
+          })
+        );
+      });
+
+      // it('should be able to to submit a second claim for the same cover after the first rejection', async () => {
+      //
+      //   const tokenData = await distributor.tokens.call(firstTokenId);
+      //
+      //
+      //   const values = await qd.getCoverDetailsByCoverID2(tokenData.coverId.toString());
+      //   console.log(`##### cover details`)
+      //   console.log(values);
+      //
+      //   await distributor.submitClaim(firstTokenId, {
+      //     from: nftCoverHolder1
+      //   });
+      // })
+
+      it('distributor is able sell NXM tokens for ETH', async function() {
+        const maxSellTokens = await mcr.getMaxSellTokens();
+        const sellAmount = maxSellTokens;
+        const withdrawableETHPreSale = await distributor.withdrawableTokens.call(
+          toHex('ETH')
+        );
+        const balancePreSale = await web3.eth.getBalance(distributor.address);
+        await distributor.sellNXMTokens(sellAmount, {
+          from: coverHolder
         });
+        const withdrawableETHPostSale = await distributor.withdrawableTokens.call(
+          toHex('ETH')
+        );
+        const balancePostSale = await web3.eth.getBalance(distributor.address);
+
+        const balanceGain = new web3.utils.BN(balancePostSale).sub(
+          new web3.utils.BN(balancePreSale)
+        );
+        const withdrawableGain = withdrawableETHPostSale.sub(
+          withdrawableETHPreSale
+        );
+        withdrawableGain.toString().should.be.equal(balanceGain.toString());
+      });
+    });
+
+    describe('All CAs accept claim', function() {
+      let initialStakedTokens1;
+      let initialStakedTokens2;
+      let priceinEther;
+      before(async function() {
+        const now = await latestTime();
+        await increaseTimeTo(
+          new BN(BOOK_TIME.toString()).add(new BN(now.toString()))
+        );
+      });
+
+      it('should allow submitting a claim for a second token', async function() {
+        await distributor.submitClaim(secondTokenId, {
+          from: nftCoverHolder1
+        });
+
+        coverID = await qd.getAllCoversOfUser(distributor.address);
+        claimId = (await cd.actualClaimLength()) - 1;
+      });
+
+      it('should let claim assessor to vote for claim assessment', async function() {
+        await cl.submitCAVote(claimId, 1, {from: member1});
+        await cl.submitCAVote(claimId, 1, {from: member2});
+        await cl.submitCAVote(claimId, 1, {from: member3});
+        await cl.getClaimFromNewStart(0, {from: member1});
+        await cl.getClaimFromNewStart(1, {from: member1});
+        await cd.getVoteToken(claimId, 0, 1);
+        await cd.getVoteVoter(claimId, 1, 1);
+        let verdict = await cd.getVoteVerdict(claimId, 1, 1);
+        parseFloat(verdict).should.be.equal(1);
+      });
+
+      it('should not able to vote after voting closed', async function() {
+        const now = await latestTime();
+        const maxVotingTime = await cd.maxVotingTime();
+        closingTime = new BN(maxVotingTime.toString()).add(
+          new BN(now.toString())
+        );
+        await increaseTimeTo(
+          new BN(closingTime.toString()).add(new BN((6).toString()))
+        );
+        await assertRevert(cl.submitCAVote(claimId, 1, {from: member1}));
+      });
+
+      it('should be able to change claim status', async function() {
+        const apiCallLength = (await pd.getApilCallLength()) - 1;
+        let apiid = await pd.allAPIcall(apiCallLength);
+
+        // let apiid = await pd.allAPIcall((await pd.getApilCallLength()) - 1);
+        priceinEther = await mcr.calculateTokenPrice(CA_ETH);
+        await P1.__callback(apiid, '');
+        const newCStatus = await cd.getClaimStatusNumber(claimId);
+        newCStatus[1].toString().should.be.equal((7).toString());
+        const claimData = await cl.getClaimbyIndex(claimId);
+
+        claimData.finalVerdict.toString().should.be.equal((1).toString());
+        claimData.status.toString().should.be.equal((7).toString());
+      });
+
+      it('voting should be closed', async function() {
+        (await cl.checkVoteClosing(claimId))
+          .toString()
+          .should.be.equal((-1).toString());
+      });
+
+      it('token owner should be able to redeem claim', async function() {
+        const balancePreRedeem = new web3.utils.BN(
+          await web3.eth.getBalance(nftCoverHolder1)
+        );
+        const redeemClaimsResponse = await distributor.redeemClaim(
+          secondTokenId,
+          {
+            from: nftCoverHolder1
+          }
+        );
+        const logs = Array.from(redeemClaimsResponse.logs);
+        const claimRedeemedEvent = logs.filter(
+          log => log.event === 'ClaimRedeemed'
+        )[0];
+
+        const expectedTotalClaimValue = new web3.utils.BN(coverDetails[0]);
+
+        claimRedeemedEvent.args.receiver.should.be.equal(nftCoverHolder1);
+        claimRedeemedEvent.args.value
+          .toString()
+          .should.be.equal(expectedTotalClaimValue.toString());
+
+        const balancePostRedeem = new web3.utils.BN(
+          await web3.eth.getBalance(nftCoverHolder1)
+        );
+
+        const tx = await web3.eth.getTransaction(redeemClaimsResponse.tx);
+        const gasCost = new web3.utils.BN(tx.gasPrice).mul(
+          new web3.utils.BN(redeemClaimsResponse.receipt.gasUsed)
+        );
+        const balanceGain = balancePostRedeem
+          .add(gasCost)
+          .sub(balancePreRedeem);
+
+        balanceGain
+          .toString()
+          .should.be.equal(expectedTotalClaimValue.toString());
       });
     });
   });
