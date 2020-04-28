@@ -300,6 +300,14 @@ contract('Distributor buy cover and claim', function([
             claimId = (await cd.actualClaimLength()) - 1;
           });
 
+          it('fails to submit another claim once a claim is currently in progress for a token', async () => {
+            await assertRevert(
+              distributor.submitClaim(firstTokenId, {
+                from: nftCoverHolder1
+              })
+            );
+          });
+
           it('should return token data for token with claim in progress', async () => {
             const tokenData = await distributor.tokens.call(firstTokenId);
 
@@ -433,6 +441,20 @@ contract('Distributor buy cover and claim', function([
             );
           });
 
+          // it('should be able to to submit a second claim for the same cover after the first rejection', async () => {
+          //
+          //   const tokenData = await distributor.tokens.call(firstTokenId);
+          //
+          //
+          //   const values = await qd.getCoverDetailsByCoverID2(tokenData.coverId.toString());
+          //   console.log(`##### cover details`)
+          //   console.log(values);
+          //
+          //   await distributor.submitClaim(firstTokenId, {
+          //     from: nftCoverHolder1
+          //   });
+          // })
+
           it('distributor is able sell NXM tokens for ETH', async function() {
             const maxSellTokens = await mcr.getMaxSellTokens();
             const sellAmount = maxSellTokens;
@@ -472,12 +494,17 @@ contract('Distributor buy cover and claim', function([
               new BN(BOOK_TIME.toString()).add(new BN(now.toString()))
             );
 
+            claimId = (await cd.actualClaimLength()) - 1;
+            console.log(`Claim id before submission ${claimId}`);
+
             await distributor.submitClaim(secondTokenId, {
               from: nftCoverHolder1
             });
 
             coverID = await qd.getAllCoversOfUser(distributor.address);
             claimId = (await cd.actualClaimLength()) - 1;
+            console.log(`Claim id post submission ${claimId}`);
+
             initialStakedTokens1 = await tf.getStakerLockedTokensOnSmartContract(
               staker1,
               smartConAdd,
@@ -535,7 +562,7 @@ contract('Distributor buy cover and claim', function([
               .should.be.equal((-1).toString());
           });
 
-          it('token should be able to redeem claim', async function() {
+          it('token owner should be able to redeem claim', async function() {
             const balancePreRedeem = new web3.utils.BN(
               await web3.eth.getBalance(nftCoverHolder1)
             );
@@ -726,7 +753,7 @@ contract('Distributor buy cover and claim', function([
             gain.toString().should.be.equal(withdrawnSum);
           });
 
-          it('token should be able to redeem claim', async function() {
+          it('token owner should be able to redeem claim', async function() {
             const balancePreRedeem = new web3.utils.BN(
               await cad.balanceOf(nftCoverHolder1)
             );
