@@ -4,10 +4,6 @@ const fs = require('fs');
 const A = 0.01028;
 const C = 5800000;
 
-function getM1 (m0, tokens, MCReth) {
-  return m0 - tokens * getPrice(m0, MCReth) / (2 * MCReth);
-}
-
 const calculateBuyTokensFullIntegral = (Vt0, deltaETH, MCReth) => {
   Vt0 = Decimal(Vt0);
   deltaETH = Decimal(deltaETH);
