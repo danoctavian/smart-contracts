@@ -137,6 +137,7 @@ function calculateSellPrice (Vt0, MCReth, nxmToSell, iterations) {
   const MInverted = Decimal(MCReth).pow(3).mul(C);
   let tokensAmount;
   let prevEthEstimate;
+  // TODO: start at 0
   let ethEstimateLeftBound = ethEstimate.div(2);
   let ethEstimateRightBound = ethEstimate;
   for (let i = 0; i < iterations; i++) {
