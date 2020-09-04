@@ -20,6 +20,7 @@
     "@openzeppelin/test-helpers": "^0.5.5",
     "axios": "^0.19.2",
     "chai": "^4.2.0",
+    "decimal.js": "^10.2.0",
     "eslint": "^6.8.0",
     "eslint-config-semistandard": "^15.0.0",
     "eslint-config-standard": "^13.0.1",
@@ -43,7 +44,7 @@
     "test-integration": "mocha --exit test/integration",
     "test-unit": "mocha --exit test/unit",
     "deploy-mock": "oz compile && node scripts/mock-deploy.js",
-    "fork-test": "TEST_ENV_FORK=https://parity.nexusmutual.io mocha --exit test/fork"
+    "fork-test": "TEST_ENV_FORK=http://localhost:8545 mocha --exit test/fork"
   },
   "license": "ISC"
 }

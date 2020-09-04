@@ -7,6 +7,7 @@ const BN = require('web3').utils.BN;
 const { encode1 } = require('./external');
 const { logEvents, hex } = require('../utils/helpers');
 
+
 const MemberRoles = contract.fromArtifact('MemberRoles');
 const NXMaster = contract.fromArtifact('NXMaster');
 const NXMToken = contract.fromArtifact('NXMToken');
@@ -37,6 +38,7 @@ async function submitGovernanceProposal (categoryId, actionHash, members, gv, su
   for (let i = 0; i < members.length; i++) {
     await gv.submitVote(proposalId, 1, { from: members[i] });
   }
+
 
   console.log(`Closing proposal`);
   await time.increase(604800);
@@ -148,6 +150,9 @@ describe('migration', function () {
     const oldStake = new BN(currentStakes[currentStakes.length - 1]);
     const newStake = oldStake.add(currentDeposit);
     const newStakes = [...currentStakes.slice(0, -1), newStake];
+
+
+    await ps.processPendingActions('200');
 
     await expectRevert.unspecified( // reverts when attempting transfer
       ps.depositAndStake(oldStake, currentContracts, newStakes, { from: firstBoardMember }),
