@@ -1,5 +1,5 @@
 const node = {
-  gasLimit: 6e6, // Maximum gas per block
+  gasLimit: 12e6, // Maximum gas per block
   // When the vmErrorsOnRPCResponse setting value is:
   //    FALSE: thrown errors contain tx hash, blockHash, gasUsed but have a generic error message
   //    TRUE:  thrown errors contain the exact error (out of gas, or revert) but no transaction details
@@ -23,7 +23,7 @@ if (process.env.TEST_ENV_FORK) {
     '0x23E1B127Fd62A4dbe64cC30Bb30FFfBfd71BcFc6',
   ];
 
-  const notarize = [];
+  const notarize = ['0x176c27973e0229501d049de626d50918dda24656'];
 
   const unlocked = boardMembers.concat(notarize);
   node.unlocked_accounts = unlocked;
@@ -32,7 +32,7 @@ if (process.env.TEST_ENV_FORK) {
 module.exports = {
   accounts: {
     amount: 100, // Number of unlocked accounts
-    ether: 1000000, // Initial balance of unlocked accounts (in ether)
+    ether: 1000000000, // Initial balance of unlocked accounts (in ether)
   },
   contracts: {
     type: 'truffle', // Contract abstraction to use: 'truffle' for @truffle/contract or 'web3' for web3-eth-contract

@@ -18,6 +18,7 @@ const PooledStaking = contract.fromArtifact('PooledStaking');
 const TokenController = contract.fromArtifact('TokenController');
 const PoolData = contract.fromArtifact('PoolData');
 const UpgradeabilityProxy = contract.fromArtifact('UpgradeabilityProxy');
+const NexusMember = contract.fromArtifact('NexusMember');
 
 const upgradeProxyImplementationCategoryId = 5;
 const newContractAddressUpgradeCategoryId = 29;
@@ -66,31 +67,39 @@ async function sell(amount, from, p1, mcr) {
     console.log(`maxSellTokens ${wad(maxSellTokens)}`);
 
     price = await mcr.calculateTokenPrice(hex('DAI'));
-    console.log(`price: ${wad(price)}`);
+    console.log(`price before sale: ${wad(price)}`);
     const sellAmount = maxSellTokens.gt(leftToBeSold) ? leftToBeSold : maxSellTokens;
-    await p1.sellNXMTokens(sellAmount, {
+    const tx = await p1.sellNXMTokens(sellAmount, {
       from
     });
+    console.log({ gasUsed: tx.receipt.gasUsed });
 
     leftToBeSold = leftToBeSold.sub(sellAmount);
     price = await mcr.calculateTokenPrice(hex('DAI'));
-    console.log(`price: ${wad(price)}`);
+    console.log(`price after sale: ${wad(price)}`);
   }
 }
 
-async function buy(ethAmount, from, p1, mcr) {
+async function buy(ethAmount, from, p1, mcr, tk) {
   let price = 0;
   price = await mcr.calculateTokenPrice(hex('DAI'));
   console.log(`price: ${wad(price)}`);
 
   console.log(`buy worth of ${wad(ethAmount)} ETH`);
-  await p1.buyToken({
+
+  const balanceBefore =await tk.balanceOf(from);
+  const tx = await p1.buyToken({
     from,
     value: ethAmount
   });
+  const balanceAfter =await tk.balanceOf(from);
+
+  const balanceDiff = balanceAfter.sub(balanceBefore);
+  console.log(`token gained: ${wad(balanceDiff)}`);
 
   price = await mcr.calculateTokenPrice(hex('DAI'));
   console.log(`price: ${wad(price)}`);
+  return balanceDiff;
 }
 
 async function postMCR() {
@@ -139,7 +148,7 @@ describe.only('simulation', function () {
     console.log(`secondBoardMember ${secondBoardMember}`);
     for (const member of boardMembers) {
       console.log(`Topping up ${member}`);
-      await web3.eth.sendTransaction({ from: funder, to: member, value: ether('100000') });
+      await web3.eth.sendTransaction({ from: funder, to: member, value: ether('1000000') });
     }
 
     const { memberArray: [owner] } = await mr.members('3');
@@ -156,18 +165,81 @@ describe.only('simulation', function () {
     this.master = master;
   });
 
+  const notarize = '0x176c27973e0229501d049de626d50918dda24656';
+
   it.only('performs sells and buys', async function () {
-    const { boardMembers, owner, tk, p1, mcr } = this;
+    const { boardMembers, owner, tk, p1, mcr, master, mr } = this;
     const balance = await tk.balanceOf(owner);
     console.log(`balance: ${wad(balance)}`);
     const secondBoardMember = boardMembers[1];
 
+    const nexusMemberContract = await NexusMember.new(master.address, {
+      from: secondBoardMember
+    });
+
+    const fee = ether('0.002');
+
+    await mr.payJoiningFee(nexusMemberContract.address, {
+      from: owner,
+      value: fee,
+    });
+    await mr.kycVerdict(nexusMemberContract.address, true, {
+      from: notarize
+    });
+
+    await tk.transfer(nexusMemberContract.address, ether('2000'), {
+      from: owner
+    });
+
+    const nxmBal = await tk.balanceOf(nexusMemberContract.address);
+    console.log({ nxmBal: wad(nxmBal) });
+
+    console.log(`Selling tokens with contract member ${nexusMemberContract.address}:`)
+
+    const [funder] = accounts;
+    await web3.eth.sendTransaction({ from: funder, to: nexusMemberContract.address, value: ether('1000000') });
+
+    console.log(`Buying nxm tokens.`);
+    const tx = await nexusMemberContract.buyNXMTokens(ether('17000'), {
+      from: secondBoardMember
+    });
+    console.log({gasUsed: tx.receipt.gasUsed });
+
+    const nxmBalPostBuy = await tk.balanceOf(nexusMemberContract.address);
+    console.log({ nxmBalPostBuy: wad(nxmBalPostBuy) });
+
+    console.log(`Approving tokens`);
+    await nexusMemberContract.nxmTokenApprove(p1.address, ether('1'), {
+      from: secondBoardMember
+    });
+
+
+    const toBeReceived = await nexusMemberContract.getEtherToBeReceived(ether('200'), {
+      from: secondBoardMember
+    });
+
+    console.log({ toBeReceived: wad(toBeReceived) });
+
+    console.log(`Selling directly:`);
+    await sell(ether('100'), owner, p1, mcr);
+    console.log(`Selling from member contract:`);
+    await nexusMemberContract.sellNXMTokens(ether('1'), {
+      from: secondBoardMember
+    });
+
+    const bal = await web3.eth.getBalance(nexusMemberContract.address);
+    console.log({ bal: wad(bal) });
+    return;
+
     // await sell(ether('8000'), owner, p1, mcr);
 
     // await buy(ether('2000'), owner, p1, mcr);
-    for (let i = 0; i < 10; i++) {
-      await buy(ether('1000'), secondBoardMember, p1, mcr);
+    for (let i = 0; i < 9; i++) {
+      await buy(ether('15000'), secondBoardMember, p1, mcr, tk);
     }
+
+    const tokensBought = await buy(ether('15000'), secondBoardMember, p1, mcr, tk);
+    await sell(tokensBought, owner, p1, mcr);
 
     // await buy(ether('5000'), secondBoardMember, p1, mcr);
   });
