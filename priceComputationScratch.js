@@ -190,10 +190,9 @@ function calculateSellPriceReverseFormula (Vt0, MCReth, nxmToSell) {
   const MCRPerc = Vt0.div(MCReth);
   const MInverted = Decimal(MCReth).pow(3).mul(C);
 
-  const rawDenominator = Decimal(1).div(Vt0.pow(3))
-    .sub(Decimal(3).mul(nxmToSell).div(MInverted));
-  const denominator = (rawDenominator).pow(1 / 3);
-  const adjustedDeltaV = Decimal(1).div(denominator).sub(Vt0);
+  const rawTerm = MInverted.div(Decimal(3).mul(nxmToSell).add(MInverted.div(Vt0.pow(3))));
+  const term = (rawTerm).pow(1 / 3);
+  const adjustedDeltaV = Vt0.sub(term);
 
   const ethEstimate = adjustedDeltaV.add(a.mul(nxmToSell));
   return {
@@ -383,7 +382,7 @@ async function dataSet3 () {
   const text = buffer.join('\n');
   fs.writeFileSync('./large-data-set-results-high-MCR.csv', text);
 }
-
+//
 // dataSet1();
 // dataSet2()
 dataSet3()
