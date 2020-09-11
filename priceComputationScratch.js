@@ -119,13 +119,38 @@ function calculateBuyTokensWithAdjustedPriceFormulaWithMCRPerc (Vt0, deltaETH, M
   function integral (point) {
     return Decimal(-1).div(3).mul(MInverted).div(Decimal(point).pow(3));
   }
-  const adjustedTokenAmount = (integral(MCRPerc1).sub(integral(MCRPerc0))).mul(MCReth);
+  const leftSide = integral(MCRPerc1);
+  const rightSide = integral(MCRPerc0);
+  const adjustedTokenAmount = (leftSide.sub(rightSide)).mul(MCReth);
   const averageAdjustedPrice = deltaETH.div(adjustedTokenAmount);
   const genuinePrice = averageAdjustedPrice.add(Decimal(A));
 
   const tokens = deltaETH.div(genuinePrice);
   return tokens;
 }
+
+function calculateBuyTokensWithAdjustedPriceFormulaWithMCRPercInts (Vt0, deltaETH, MCReth) {
+  const c = Decimal(C);
+  MCReth = Decimal(MCReth);
+  const MInverted = c.div(Decimal(MCReth));
+  Vt0 = Decimal(Vt0);
+  deltaETH = Decimal(deltaETH);
+  const Vt1 = Vt0.add(deltaETH);
+  const MCRPerc0 = Vt0.div(MCReth);
+  const MCRPerc1 = Vt1.div(MCReth);
+  function integral (point) {
+    return Decimal(-1).div(3).mul(MInverted).div(Decimal(point).pow(3));
+  }
+  const leftSide = integral(MCRPerc1);
+  const rightSide = integral(MCRPerc0);
+  const adjustedTokenAmount = (leftSide.sub(rightSide)).mul(MCReth);
+  const averageAdjustedPrice = deltaETH.div(adjustedTokenAmount);
+  const genuinePrice = averageAdjustedPrice.add(Decimal(A));
+
+  const tokens = deltaETH.div(genuinePrice);
+  return tokens;
+}
+
 
 function calculateSellPrice (Vt0, MCReth, nxmToSell, iterations) {
   Vt0 = Decimal(Vt0);
@@ -153,6 +178,25 @@ function calculateSellPrice (Vt0, MCReth, nxmToSell, iterations) {
   }
   return {
     tokensAmount,
+    ethEstimate,
+  };
+}
+
+function calculateSellPriceReverseFormula (Vt0, MCReth, nxmToSell) {
+  Vt0 = Decimal(Vt0);
+  MCReth = Decimal(MCReth);
+  nxmToSell = Decimal(nxmToSell);
+  const a = Decimal(A);
+  const MCRPerc = Vt0.div(MCReth);
+  const MInverted = Decimal(MCReth).pow(3).mul(C);
+
+  const rawDenominator = Decimal(1).div(Vt0.pow(3))
+    .sub(Decimal(3).mul(nxmToSell).div(MInverted));
+  const denominator = (rawDenominator).pow(1 / 3);
+  const adjustedDeltaV = Decimal(1).div(denominator).sub(Vt0);
+
+  const ethEstimate = adjustedDeltaV.add(a.mul(nxmToSell));
+  return {
     ethEstimate,
   };
 }
@@ -188,17 +232,19 @@ async function dataSet1 () {
   const m = mConstant(MCReth).toFixed();
 
   const tokensWithAdjusted = calculateBuyTokensWithAdjustedPriceFormula(Vt0, deltaETH, MCReth);
-  const tokensWithAdjustedWithMCRPerc = calculateBuyTokensWithAdjustedPriceFormulaWithMCRPerc(Vt0, deltaETH, MCReth);
+  const tokensWithAdjustedWithMCRPerc = calculateBuyTokensWithAdjustedPriceFormulaWithMCRPercInts(Vt0, deltaETH, MCReth);
 
   const fullIntegralTokens = calculateBuyTokensFullIntegral(Vt0, deltaETH, MCReth);
 
   const sellPrice = calculateSellPrice(Vt1, MCReth, fullIntegralTokens, 12);
 
+  const reverseSellPrice = calculateSellPriceReverseFormula(Vt1, MCReth, fullIntegralTokens);
+
   console.log({
     // DAIETHRate,
     // Vt0,
     // MCRPerct0,
-    // deltaETH,
+    deltaETH,
     // Vt1,
     // MCRPerct1,
     // price0,
@@ -209,6 +255,7 @@ async function dataSet1 () {
     tokensWithAdjustedWithMCRPerc,
     fullIntegralTokens,
     sellPrice,
+    reverseSellPrice
   });
 }
 
@@ -287,6 +334,7 @@ async function dataSet3 () {
 
     const { tokensAmount: sellPrice } = calculateSellPrice(Vt1, MCReth, fullIntegralTokens, 10);
     const slippageMargin = sellSlippage.mul(fullIntegralTokens);
+    const { ethEstimate: ethReverse } = calculateSellPriceReverseFormula(Vt1, MCReth, fullIntegralTokens);
 
     const absDiffSell = fullIntegralTokens.sub(sellPrice).abs();
     const sellWithinErrorMargin = slippageMargin.gt(absDiffSell);
@@ -306,6 +354,7 @@ async function dataSet3 () {
       sellPrice,
       isWithinErrorMargin,
       sellWithinErrorMargin,
+      ethReverse
     };
     console.log(result);
     if (!isWithinErrorMargin) {
