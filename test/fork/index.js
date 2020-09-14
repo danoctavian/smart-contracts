@@ -4,6 +4,6 @@ describe('PooledStaking fork tests', function () {
   this.timeout(5000000);
   this.slow(2000);
 
-  require('./price-simulation');
-
+  // require('./price-simulation');
+  require('./vote-simulation');
 });

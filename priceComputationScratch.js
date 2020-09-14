@@ -382,7 +382,34 @@ async function dataSet3 () {
   const text = buffer.join('\n');
   fs.writeFileSync('./large-data-set-results-high-MCR.csv', text);
 }
+
+function dataSet4() {
+  const MCReth = 130000;
+
+  const ETHAsset = 215000;
+  const DAIAsset = 50000;
+
+  const DAIETHRate = 1 / 380;
+
+  const Vt0 = ETHAsset + DAIAsset * DAIETHRate;
+  const MCRPerct0 = Vt0 / MCReth;
+
+  const deltaDAI = 100000;
+  const deltaETH = deltaDAI * DAIETHRate;
+
+  const Vt1 = Vt0 + deltaETH;
+  const MCRPerct1 = Vt1 / MCReth;
+
+  const price0 = getPrice(MCRPerct0, MCReth) / DAIETHRate;
+
+  console.log({
+    MCRPerct0,
+    price0
+  });
+}
 //
 // dataSet1();
 // dataSet2()
-dataSet3()
+// dataSet3()
+
+dataSet4()

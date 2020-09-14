@@ -114,7 +114,7 @@ async function postMCR() {
 
 }
 
-describe.only('simulation', function () {
+describe('simulation', function () {
 
   this.timeout(0);
 
@@ -167,7 +167,7 @@ describe.only('simulation', function () {
 
   const notarize = '0x176c27973e0229501d049de626d50918dda24656';
 
-  it.only('performs sells and buys', async function () {
+  it('performs sells and buys', async function () {
     const { boardMembers, owner, tk, p1, mcr, master, mr } = this;
     const balance = await tk.balanceOf(owner);
     console.log(`balance: ${wad(balance)}`);
