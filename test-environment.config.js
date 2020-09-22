@@ -25,14 +25,20 @@ if (process.env.TEST_ENV_FORK) {
 
   const notarize = ['0x176c27973e0229501d049de626d50918dda24656'];
 
-  const unlocked = boardMembers.concat(notarize);
+  const others = [
+    '0x598dbe6738e0aca4eabc22fed2ac737dbd13fb8f',
+    '0x25783b67b5e29c48449163db19842b8531fdde43',
+    '0xfc64382c9ce89ba1c21692a68000366a35ff0336'
+  ]
+
+  const unlocked = boardMembers.concat(notarize).concat(others);
   node.unlocked_accounts = unlocked;
 }
 
 module.exports = {
   accounts: {
     amount: 100, // Number of unlocked accounts
-    ether: 1000000000, // Initial balance of unlocked accounts (in ether)
+    ether: 1000000000000000, // Initial balance of unlocked accounts (in ether)
   },
   contracts: {
     type: 'truffle', // Contract abstraction to use: 'truffle' for @truffle/contract or 'web3' for web3-eth-contract

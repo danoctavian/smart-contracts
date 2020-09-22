@@ -143,13 +143,20 @@ describe.only('price simulation', function () {
     const mcr = await MCR.at(nameToAddressMap['MC']);
     const pd = await PoolData.at(nameToAddressMap['PD']);
 
+    const richMembers = [
+      '0x598dbe6738e0aca4eabc22fed2ac737dbd13fb8f',
+      '0x25783b67b5e29c48449163db19842b8531fdde43',
+      '0xfc64382c9ce89ba1c21692a68000366a35ff0336'
+    ];
+
     const [funder] = accounts;
     console.log({ funder });
     const { memberArray: boardMembers } = await mr.members('1');
     const secondBoardMember = boardMembers[1];
     console.log(`secondBoardMember ${secondBoardMember}`);
     const addressesToTopUp = [notarize];
-    addressesToTopUp.push(...addressesToTopUp);
+    addressesToTopUp.push(...boardMembers);
+    addressesToTopUp.push(...richMembers);
     for (const member of addressesToTopUp) {
       console.log(`Topping up ${member}`);
       await web3.eth.sendTransaction({ from: funder, to: member, value: ether('10000000000000') });
@@ -169,12 +176,18 @@ describe.only('price simulation', function () {
     this.pd = pd;
     this.mcr = mcr;
     this.master = master;
+    this.richMembers = richMembers;
   });
 
-  it('performs sells and buys', async function () {
-    const { boardMembers, owner, tk, p1, mcr, master, mr } = this;
-    const balance = await tk.balanceOf(owner);
-    console.log(`balance: ${wad(balance)}`);
+  it.only('performs sells and buys', async function () {
+    const { boardMembers, owner, tk, p1, mcr, master, mr, richMembers } = this;
+
+    let i = 0;
+    for (const boardMember of boardMembers) {
+      const balance = await tk.balanceOf(boardMember);
+      console.log(`balance of board member ${i++}: ${wad(balance)}`);
+
+    }
     const secondBoardMember = boardMembers[1];
 
     const nexusMemberContract = await NexusMember.new(master.address, {
@@ -192,7 +205,7 @@ describe.only('price simulation', function () {
     });
 
     await tk.transfer(nexusMemberContract.address, ether('2000'), {
-      from: owner
+      from: richMembers[0]
     });
 
     const nxmBal = await tk.balanceOf(nexusMemberContract.address);
@@ -203,11 +216,11 @@ describe.only('price simulation', function () {
     const [funder] = accounts;
     await web3.eth.sendTransaction({ from: funder, to: nexusMemberContract.address, value: ether('1000000') });
 
-    console.log(`Buying nxm tokens.`);
-    const tx = await nexusMemberContract.buyNXMTokens(ether('17000'), {
-      from: secondBoardMember
-    });
-    console.log({gasUsed: tx.receipt.gasUsed });
+    // console.log(`Buying nxm tokens.`);
+    // const tx = await nexusMemberContract.buyNXMTokens(ether('17000'), {
+    //   from: secondBoardMember
+    // });
+    // console.log({gasUsed: tx.receipt.gasUsed });
 
     const nxmBalPostBuy = await tk.balanceOf(nexusMemberContract.address);
     console.log({ nxmBalPostBuy: wad(nxmBalPostBuy) });
