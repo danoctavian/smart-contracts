@@ -28,7 +28,7 @@ const addNewInternalContractCategoryId = 34;
 
 
 
-describe.only('simulation for voting', function () {
+describe.skip('simulation for voting', function () {
 
   this.timeout(0);
 
@@ -84,7 +84,7 @@ describe.only('simulation for voting', function () {
     this.secondBoardMember = secondBoardMember;
   });
 
-  it.only('lets claim expire', async function () {
+  it('lets claim expire', async function () {
     const { master, cd, secondBoardMember, cl, owner, boardMembers } = this;
     const week = 604800;
     const advance = week;

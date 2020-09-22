@@ -386,7 +386,7 @@ async function dataSet3 () {
 function dataSet4() {
   const MCReth = 130000;
 
-  const ETHAsset = 215000;
+  const ETHAsset = 255000;
   const DAIAsset = 50000;
 
   const DAIETHRate = 1 / 380;

@@ -114,10 +114,12 @@ async function postMCR() {
 
 }
 
-describe('simulation', function () {
+describe.only('price simulation', function () {
 
   this.timeout(0);
 
+
+  const notarize = '0x176c27973e0229501d049de626d50918dda24656';
 
   before(async function () {
     const { data: versionData } = await axios.get('https://api.nexusmutual.io/version-data/data.json');
@@ -146,10 +148,14 @@ describe('simulation', function () {
     const { memberArray: boardMembers } = await mr.members('1');
     const secondBoardMember = boardMembers[1];
     console.log(`secondBoardMember ${secondBoardMember}`);
-    for (const member of boardMembers) {
+    const addressesToTopUp = [notarize];
+    addressesToTopUp.push(...addressesToTopUp);
+    for (const member of addressesToTopUp) {
       console.log(`Topping up ${member}`);
-      await web3.eth.sendTransaction({ from: funder, to: member, value: ether('1000000') });
+      await web3.eth.sendTransaction({ from: funder, to: member, value: ether('10000000000000') });
     }
+
+
 
     const { memberArray: [owner] } = await mr.members('3');
     console.log(owner);
@@ -164,8 +170,6 @@ describe('simulation', function () {
     this.mcr = mcr;
     this.master = master;
   });
-
-  const notarize = '0x176c27973e0229501d049de626d50918dda24656';
 
   it('performs sells and buys', async function () {
     const { boardMembers, owner, tk, p1, mcr, master, mr } = this;
