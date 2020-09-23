@@ -373,12 +373,13 @@ async function dataSet3 () {
       MCRPerct0,
       MCRPerct1,
       adjustedFormulaResult,
-      tokensWithAdjustedWithMCRPerc,
       fullIntegralTokens,
-      sellPrice,
-      isWithinErrorMargin,
-      sellWithinErrorMargin,
-      ethReverse,
+      // tokensWithAdjustedWithMCRPerc,
+
+      // sellPrice,
+      // isWithinErrorMargin,
+      // sellWithinErrorMargin,
+      // ethReverse,
       fullRobertIntegralTokens,
       smallRectanglesIntegral
     };
