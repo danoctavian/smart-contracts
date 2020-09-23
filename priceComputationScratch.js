@@ -46,6 +46,27 @@ const calculateBuyTokensFullIntegral = (Vt0, deltaETH, MCReth) => {
   return integral(Vt1).sub(integral(Vt0));
 };
 
+
+function calculateBuyTokensWithRobertIntegral (Vt0, deltaETH, MCReth) {
+
+  Vt0 = Decimal(Vt0);
+  deltaETH = Decimal(deltaETH);
+  MCReth = Decimal(MCReth);
+
+  Vt1 = Vt0.add(deltaETH);
+  MCRPerct1 = Vt1.div(MCReth);
+  MCRPerct0 = Vt0.div(MCReth);
+
+  function antiDerivative(MCRPerc) {
+    return Decimal(A).mul(MCRPerc).add(MCReth.mul(MCRPerc.pow(5)).div(Decimal(C).mul(5)))
+  }
+
+  const price = antiDerivative(MCRPerct1).sub(antiDerivative(MCRPerct0)).div(MCRPerct1.sub(MCRPerct0))
+
+  const totalTokens = deltaETH.div(price);
+  return totalTokens;
+}
+
 function calculateBuyTokensWithSmallRectangles (Vt0, deltaETH, MCReth, stepSize) {
   Vt0 = Decimal(Vt0);
   deltaETH = Decimal(deltaETH);
@@ -235,6 +256,8 @@ async function dataSet1 () {
 
   const fullIntegralTokens = calculateBuyTokensFullIntegral(Vt0, deltaETH, MCReth);
 
+  const fullRobertIntegralTokens = calculateBuyTokensWithRobertIntegral(Vt0, deltaETH, MCReth);
+
   const sellPrice = calculateSellPrice(Vt1, MCReth, fullIntegralTokens, 12);
 
   const reverseSellPrice = calculateSellPriceReverseFormula(Vt1, MCReth, fullIntegralTokens);
@@ -254,7 +277,8 @@ async function dataSet1 () {
     tokensWithAdjustedWithMCRPerc,
     fullIntegralTokens,
     sellPrice,
-    reverseSellPrice
+    reverseSellPrice,
+    fullRobertIntegralTokens
   });
 }
 
@@ -313,19 +337,20 @@ async function dataSet3 () {
   const DAIETHRate = 1 / 235;
 
   const errorMargin = Decimal(0.0001);
-
+  const deltaDAI = 100000;
+  let deltaETH = deltaDAI * DAIETHRate;
   const results = [];
   for (let i = 0; i < 1000; i++) {
     const Vt0 = ETHAsset + DAIAsset * DAIETHRate;
-    const deltaDAI = 100000;
-    const deltaETH = deltaDAI * DAIETHRate;
 
-    const Vt1 = Vt0 + deltaETH;
+    let Vt1 = Vt0 + deltaETH;
     const MCRPerct0 = Vt0 / MCReth * 100;
     const MCRPerct1 = Vt1 / MCReth * 100;
     const adjustedFormulaResult = calculateBuyTokensWithAdjustedPriceFormula(Vt0, deltaETH, MCReth);
     const tokensWithAdjustedWithMCRPerc = calculateBuyTokensWithAdjustedPriceFormulaWithMCRPerc(Vt0, deltaETH, MCReth);
     const fullIntegralTokens = calculateBuyTokensFullIntegral(Vt0, deltaETH, MCReth);
+    const fullRobertIntegralTokens = calculateBuyTokensWithRobertIntegral(Vt0, deltaETH, MCReth);
+    const smallRectanglesIntegral = calculateBuyTokensWithSmallRectangles(Vt0, deltaETH, MCReth, Decimal(0.001));
     const errorLimit = errorMargin.mul(fullIntegralTokens);
     const absoluteDifference = fullIntegralTokens.sub(tokensWithAdjustedWithMCRPerc).abs();
     const isWithinErrorMargin = errorLimit.gt(absoluteDifference);
@@ -339,9 +364,9 @@ async function dataSet3 () {
     const sellWithinErrorMargin = slippageMargin.gt(absDiffSell);
     const result = {
       MCReth,
-      ETHAsset,
-      DAIAsset,
-      DAIETHRate,
+      // ETHAsset,
+      // DAIAsset,
+      // DAIETHRate,
       deltaETH,
       Vt0,
       Vt1,
@@ -353,18 +378,21 @@ async function dataSet3 () {
       sellPrice,
       isWithinErrorMargin,
       sellWithinErrorMargin,
-      ethReverse
+      ethReverse,
+      fullRobertIntegralTokens,
+      smallRectanglesIntegral
     };
     console.log(result);
-    if (!isWithinErrorMargin) {
-      throw Error('Not within error margin');
-    }
-
-    if (!sellWithinErrorMargin) {
-      throw Error('Not within error margin for sell');
-    }
+    // if (!isWithinErrorMargin) {
+    //   throw Error('Not within error margin');
+    // }
+    //
+    // if (!sellWithinErrorMargin) {
+    //   throw Error('Not within error margin for sell');
+    // }
     ETHAsset += 1000;
-    MCReth += 1000;
+    // MCReth += 1000;
+    deltaETH += 1000;
 
     results.push(result);
   }
@@ -410,6 +438,6 @@ function dataSet4() {
 //
 // dataSet1();
 // dataSet2()
-// dataSet3()
+dataSet3()
 
-dataSet4()
+//dataSet4()
