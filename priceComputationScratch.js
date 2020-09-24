@@ -96,6 +96,34 @@ function calculateBuyTokensWithSmallRectangles (Vt0, deltaETH, MCReth, stepSize)
   return totalTokens;
 }
 
+function calculateBuyTokensWithTokenSteps (Vt0, deltaETH, MCReth, stepSize) {
+  Vt0 = Decimal(Vt0);
+  deltaETH = Decimal(deltaETH);
+  stepSize = stepSize ? Decimal(stepSize) : Decimal(1000);
+  const Vt1 = Vt0.add(deltaETH);
+  let currentV = Vt0;
+  let totalTokens = Decimal(0);
+
+  let iterations = 0;
+  while (deltaETH.gt('0')) {
+    const MCRPerc = currentV.div(MCReth);
+    const currentPrice = getPriceDecimal(MCRPerc, MCReth);
+    const tempTokens = deltaETH.div(currentPrice);
+    if (tempTokens.lt(stepSize)) {
+      totalTokens = totalTokens.add(tempTokens);
+      break;
+    } else {
+      totalTokens = totalTokens.add(stepSize);
+      const ethSpent = stepSize.mul(currentPrice);
+      deltaETH = deltaETH.sub(ethSpent);
+      currentV = currentV.add(ethSpent);
+    }
+    iterations++;
+  }
+
+  return totalTokens;
+}
+
 function mConstant (MCReth) {
   return Decimal(1).div(Decimal(MCReth).pow(3).mul(C));
 }
@@ -436,9 +464,84 @@ function dataSet4() {
     price0
   });
 }
+
+function dataSet5(MCReth, ETHAsset) {
+  const DAIAsset = 50000;
+
+  const DAIETHRate = 1 / 235;
+
+  const errorMargin = Decimal(0.0001);
+  const deltaDAI = 100000;
+  let deltaETH = deltaDAI * DAIETHRate;
+  const results = [];
+  for (let i = 0; i < 1000; i++) {
+    const Vt0 = ETHAsset + DAIAsset * DAIETHRate;
+
+    deltaETH = MCReth * 5 / 100;
+    let Vt1 = Vt0 + deltaETH;
+    const MCRPerct0 = Vt0 / MCReth * 100;
+    const MCRPerct1 = Vt1 / MCReth * 100;
+
+    const adjustedFormulaResult = calculateBuyTokensWithAdjustedPriceFormula(Vt0, deltaETH, MCReth);
+    const tokensWithAdjustedWithMCRPerc = calculateBuyTokensWithAdjustedPriceFormulaWithMCRPerc(Vt0, deltaETH, MCReth);
+    const fullIntegralTokens = calculateBuyTokensFullIntegral(Vt0, deltaETH, MCReth);
+    const fullRobertIntegralTokens = calculateBuyTokensWithRobertIntegral(Vt0, deltaETH, MCReth);
+    // const smallRectanglesIntegral = calculateBuyTokensWithSmallRectangles(Vt0, deltaETH, MCReth, Decimal(0.01));
+    const tokenStepsValue = calculateBuyTokensWithTokenSteps(Vt0, deltaETH, MCReth, Decimal(100));
+    const errorLimit = errorMargin.mul(fullIntegralTokens);
+    const absoluteDifference = fullIntegralTokens.sub(tokensWithAdjustedWithMCRPerc).abs();
+    const isWithinErrorMargin = errorLimit.gt(absoluteDifference);
+    const sellSlippage = Decimal(0.001);
+
+    const { tokensAmount: sellPrice } = calculateSellPrice(Vt1, MCReth, fullIntegralTokens, 10);
+    const slippageMargin = sellSlippage.mul(fullIntegralTokens);
+    const { ethEstimate: ethReverse } = calculateSellPriceReverseFormula(Vt1, MCReth, fullIntegralTokens);
+
+    const absDiffSell = fullIntegralTokens.sub(sellPrice).abs();
+    const sellWithinErrorMargin = slippageMargin.gt(absDiffSell);
+    const result = {
+      MCReth,
+      // ETHAsset,
+      // DAIAsset,
+      // DAIETHRate,
+      deltaETH,
+      Vt0,
+      Vt1,
+      MCRPerct0,
+      MCRPerct1,
+      adjustedFormulaResult,
+      fullIntegralTokens,
+      // tokensWithAdjustedWithMCRPerc,
+
+      // sellPrice,
+      // isWithinErrorMargin,
+      // sellWithinErrorMargin,
+      // ethReverse,
+      // fullRobertIntegralTokens,
+      // smallRectanglesIntegral,
+      tokenStepsValue
+    };
+    console.log(result);
+    // if (!isWithinErrorMargin) {
+    //   throw Error('Not within error margin');
+    // }
+    //
+    // if (!sellWithinErrorMargin) {
+    //   throw Error('Not within error margin for sell');
+    // }
+    ETHAsset += 1000;
+    MCReth += 1000;
+
+    results.push(result);
+  }
+}
 //
 // dataSet1();
 // dataSet2()
-dataSet3()
+//dataSet3()
 
 //dataSet4()
+
+//dataSet5(18000, 30000);
+// dataSet5(139115, 201108);
+dataSet5(139115, 301108);
