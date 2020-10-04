@@ -23,6 +23,24 @@ function getenv (key, fallback = false) {
   return value;
 }
 
+function coversETHValue(covers, currencyRates) {
+  let coversTotalSumAssured = {};
+  let totalSumAssuredFromDB = 0;
+  for (const cover of covers) {
+    const { curr, sumAssured } = cover;
+    if (!coversTotalSumAssured[curr]) {
+      coversTotalSumAssured[curr] = 0;
+    }
+
+    coversTotalSumAssured[curr] += sumAssured;
+    const baseCase = currencyRates[curr];
+    const baseSAInETH = sumAssured * baseCase;
+    totalSumAssuredFromDB += baseSAInETH;
+  }
+
+  return totalSumAssuredFromDB;
+}
+
 async function main() {
   const providerURL = getenv(`MAINNET_PROVIDER_URL`);
   const privateKey = getenv(`MAINNET_MNEMONIC`);
@@ -55,6 +73,10 @@ async function main() {
     ]).toArray();
 
 
+  const allAcceptedClaims = await smartcoverdetails.find({
+    statusNum: 2
+  }).toArray();
+
   client.close();
 
   const provider = new HDWalletProvider(privateKey, providerURL);
@@ -85,22 +107,14 @@ async function main() {
   currencyRates.ETH = 1;
 
   let coversTotalSumAssured = {};
-  let totalSumAssuredFromDB = 0;
-  for (const cover of allRelevantCovers) {
-    const { curr, sumAssured } = cover;
-    if (!coversTotalSumAssured[curr]) {
-      coversTotalSumAssured[curr] = 0;
-    }
+  let totalSumAssuredFromDB = coversETHValue(allRelevantCovers, currencyRates);
 
-    coversTotalSumAssured[curr] += sumAssured;
-    const baseCase = currencyRates[curr];
-    const baseSAInETH = sumAssured * baseCase;
-    totalSumAssuredFromDB += baseSAInETH;
-  }
+  let totalClaimed = coversETHValue(allAcceptedClaims, currencyRates);
 
   console.log({
     coversTotalSumAssured,
-    totalSumAssuredFromDB
+    totalSumAssuredFromDB,
+    totalClaimed
   });
 
   const [totalSumAssuredETH, totalSumAssuredDAI, allSumAssurance ] =  await Promise.all([
@@ -114,6 +128,10 @@ async function main() {
     totalSumAssuredDAI: totalSumAssuredDAI.toString(),
     allSumAssurance: allSumAssurance.toString()
   });
+
+  console.log({
+    diff: totalSumAssuredFromDB - allSumAssurance.toNumber(),
+  })
 }
 
 main()
