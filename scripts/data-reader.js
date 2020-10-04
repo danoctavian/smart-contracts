@@ -86,7 +86,7 @@ async function main() {
   }
 
   const allAcceptedClaims = await smartcoverdetails.find({
-    statusNum: 2
+    statusNum: 1
   }).toArray();
 
   console.log(allAcceptedClaims);
