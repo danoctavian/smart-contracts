@@ -24,21 +24,24 @@ function getenv (key, fallback = false) {
 }
 
 function coversETHValue(covers, currencyRates) {
-  let coversTotalSumAssured = {};
+  let coversTotalSumAssuredByCurrency = {};
   let totalSumAssuredFromDB = 0;
   for (const cover of covers) {
     const { curr, sumAssured } = cover;
-    if (!coversTotalSumAssured[curr]) {
-      coversTotalSumAssured[curr] = 0;
+    if (!coversTotalSumAssuredByCurrency[curr]) {
+      coversTotalSumAssuredByCurrency[curr] = 0;
     }
 
-    coversTotalSumAssured[curr] += sumAssured;
+    coversTotalSumAssuredByCurrency[curr] += sumAssured;
     const baseCase = currencyRates[curr];
     const baseSAInETH = sumAssured * baseCase;
     totalSumAssuredFromDB += baseSAInETH;
   }
 
-  return totalSumAssuredFromDB;
+  return {
+    totalSumAssuredFromDB,
+    coversTotalSumAssuredByCurrency
+  };
 }
 
 async function main() {
@@ -73,9 +76,20 @@ async function main() {
     ]).toArray();
 
 
+
+  const allCovers = await smartcoverdetails.find().toArray();
+
+  console.log(`allCovers.length=${allCovers.length}`)
+  const allIds = new Set(allCovers.map(c => c.coverId));
+  for (let i = 1; i <= count; i++) {
+    assert(allIds.has(i), `coverId: ${i} not present`);
+  }
+
   const allAcceptedClaims = await smartcoverdetails.find({
     statusNum: 2
   }).toArray();
+
+  console.log(allAcceptedClaims);
 
   client.close();
 
@@ -98,6 +112,9 @@ async function main() {
   const qd = nexusContractLoader.instance('QD');
   const daiFeed = nexusContractLoader.instance('DAIFEED');
 
+  const coverLength = await qd.getCoverLength();
+  assert.equal(coverLength.toNumber() - 1, count);
+
   const currencyRates = {};
 
   const rate = await daiFeed.read();
@@ -106,13 +123,12 @@ async function main() {
 
   currencyRates.ETH = 1;
 
-  let coversTotalSumAssured = {};
-  let totalSumAssuredFromDB = coversETHValue(allRelevantCovers, currencyRates);
+  let { totalSumAssuredFromDB, coversTotalSumAssuredByCurrency } = coversETHValue(allRelevantCovers, currencyRates);
 
-  let totalClaimed = coversETHValue(allAcceptedClaims, currencyRates);
+  let { totalSumAssuredFromDB: totalClaimed } = coversETHValue(allAcceptedClaims, currencyRates);
 
   console.log({
-    coversTotalSumAssured,
+    coversTotalSumAssuredByCurrency,
     totalSumAssuredFromDB,
     totalClaimed
   });
@@ -130,7 +146,9 @@ async function main() {
   });
 
   console.log({
-    diff: totalSumAssuredFromDB - allSumAssurance.toNumber(),
+    totalDiff: totalSumAssuredFromDB - allSumAssurance.toNumber(),
+    ethDiff: coversTotalSumAssuredByCurrency['ETH'] - totalSumAssuredETH.toNumber(),
+    daiDiff: coversTotalSumAssuredByCurrency['DAI'] - totalSumAssuredDAI.toNumber()
   })
 }
 
