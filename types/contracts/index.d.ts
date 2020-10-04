@@ -1336,29 +1336,6 @@ export interface NexusMemberInstance extends Truffle.ContractInstance {
     ): Promise<number>;
   };
 
-  buyNXMTokensManyTimes: {
-    (
-      ethAmount: number | BigNumber | string,
-      rounds: number | BigNumber | string,
-      txDetails?: Truffle.TransactionDetails
-    ): Promise<Truffle.TransactionResponse>;
-    call(
-      ethAmount: number | BigNumber | string,
-      rounds: number | BigNumber | string,
-      txDetails?: Truffle.TransactionDetails
-    ): Promise<void>;
-    sendTransaction(
-      ethAmount: number | BigNumber | string,
-      rounds: number | BigNumber | string,
-      txDetails?: Truffle.TransactionDetails
-    ): Promise<string>;
-    estimateGas(
-      ethAmount: number | BigNumber | string,
-      rounds: number | BigNumber | string,
-      txDetails?: Truffle.TransactionDetails
-    ): Promise<number>;
-  };
-
   getEtherToBeReceived(
     amount: number | BigNumber | string,
     txDetails?: Truffle.TransactionDetails
