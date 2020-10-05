@@ -91,8 +91,6 @@ async function main() {
 
   console.log(allAcceptedClaims);
 
-  client.close();
-
   const provider = new HDWalletProvider(privateKey, providerURL);
   const [address] = provider.getAddresses();
   console.log(`Using first address ${address} for sending transactions.`);
@@ -111,6 +109,15 @@ async function main() {
   const mcr = nexusContractLoader.instance('MC');
   const qd = nexusContractLoader.instance('QD');
   const daiFeed = nexusContractLoader.instance('DAIFEED');
+  const pool1 = nexusContractLoader.instance('P1');
+
+
+  const pastPayoutEvents = await pool1.getPastEvents('Payout', {
+    fromBlock: 0,
+  });
+
+  console.log(`Detected ${pastPayoutEvents.length} events`);
+  assert.equal(pastPayoutEvents.length, allAcceptedClaims.length);
 
   const coverLength = await qd.getCoverLength();
   assert.equal(coverLength.toNumber() - 1, count);
@@ -125,12 +132,27 @@ async function main() {
 
   let { totalSumAssuredFromDB, coversTotalSumAssuredByCurrency } = coversETHValue(allRelevantCovers, currencyRates);
 
+
+  const allRejectedClaims = await smartcoverdetails.find({
+    statusNum: 2
+  }).toArray();
+
+
+  const allSubmittedClaims = await smartcoverdetails.find({
+    statusNum: 4
+  }).toArray();
+
+
   let { totalSumAssuredFromDB: totalClaimed } = coversETHValue(allAcceptedClaims, currencyRates);
+  let { totalSumAssuredFromDB: totalRejectedClaim } = coversETHValue(allRejectedClaims, currencyRates);
+  let { totalSumAssuredFromDB: totalSubmittedClaim } = coversETHValue(allSubmittedClaims, currencyRates);
 
   console.log({
     coversTotalSumAssuredByCurrency,
     totalSumAssuredFromDB,
-    totalClaimed
+    totalClaimed,
+    totalRejectedClaim,
+    totalSubmittedClaim
   });
 
   const [totalSumAssuredETH, totalSumAssuredDAI, allSumAssurance ] =  await Promise.all([
@@ -150,6 +172,8 @@ async function main() {
     ethDiff: coversTotalSumAssuredByCurrency['ETH'] - totalSumAssuredETH.toNumber(),
     daiDiff: coversTotalSumAssuredByCurrency['DAI'] - totalSumAssuredDAI.toNumber()
   })
+
+  client.close();
 }
 
 main()
