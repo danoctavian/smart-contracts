@@ -70,8 +70,8 @@ async function main() {
       { $match: {
         version: 'M1',
         lockCN: { $ne: '0' },
-        expirytimeStamp: { $gt: (new Date()).getTime() / 1000 },
-        statusNum: { $ne: 3 },
+        expirytimeStamp: { $gte: (new Date()).getTime() / 1000 },
+//        statusNum: { $ne: 3 },
       } }
     ]).toArray();
 
@@ -117,7 +117,7 @@ async function main() {
   });
 
   console.log(`Detected ${pastPayoutEvents.length} events`);
-  assert.equal(pastPayoutEvents.length, allAcceptedClaims.length);
+  // assert.equal(pastPayoutEvents.length, allAcceptedClaims.length);
 
   const coverLength = await qd.getCoverLength();
   assert.equal(coverLength.toNumber() - 1, count);
@@ -154,6 +154,12 @@ async function main() {
     totalRejectedClaim,
     totalSubmittedClaim
   });
+
+  /*
+  removeSAFromCSA
+  _removeSAFromCSA
+  subFromTotalSumAssured
+   */
 
   const [totalSumAssuredETH, totalSumAssuredDAI, allSumAssurance ] =  await Promise.all([
     qd.getTotalSumAssured(hex('ETH')),
