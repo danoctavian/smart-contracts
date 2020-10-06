@@ -44,6 +44,63 @@ function coversETHValue(covers, currencyRates) {
   };
 }
 
+async function storeOnChainCovers(db, qd, specificIds) {
+  const onchaincovers = db.collection('onchaincovers');
+
+  console.log(`storing covers`);
+  const lastIds =  await onchaincovers.find().sort({ coverId: -1 }).toArray();
+  const lastId = lastIds[0].coverId;
+  console.log(`lastId: ${lastId}`);
+  const batchSize = 10;
+  const startId = lastId - batchSize;
+
+  async function fetch(coverId) {
+    console.log(`Processing ${coverId}`);
+    let cover;
+    cover = await qd.getCoverDetailsByCoverID2(coverId);
+
+    try {
+      await onchaincovers.insert({
+        coverId,
+        cid: cover.cid.toString(),
+        status: cover.status.toString(),
+        sumAssured: cover.sumAssured.toString(),
+        validUntil: cover.validUntil.toString(),
+        coverPeriod: cover.coverPeriod.toString()
+      });
+    } catch (e) {
+      console.error(`Failed with ${e.stack}`);
+    }
+  }
+
+  if (specificIds) {
+    console.log({
+      specificIds
+    });
+    await Promise.all(specificIds.map(fetch));
+    console.log('Done');
+    return;
+  }
+
+
+  for (let i = startId; i < 2400; i += batchSize) {
+
+    const coverId = i;
+    const batch = [];
+    for (let j = i; j < batchSize + i; j++) {
+      batch.push(j);
+    }
+    console.log(`Processing`);
+    console.log(batch);
+    try {
+      await Promise.all(batch.map(fetch));
+    } catch (e) {
+      console.error(`Failed with ${e.stack}`);
+    }
+  }
+  console.log(`Done`);
+}
+
 async function main() {
   const providerURL = getenv(`MAINNET_PROVIDER_URL`);
   const privateKey = getenv(`MAINNET_MNEMONIC`);
@@ -57,6 +114,8 @@ async function main() {
   // Use connect method to connect to the server
   const client = await MongoClient.connect(url);
   const db = client.db(dbName);
+
+
 
   const smartcoverdetails = db.collection('smartcoverdetails');
 
@@ -76,6 +135,16 @@ async function main() {
     ]).toArray();
 
 
+  const onchaincovers = db.collection('onchaincovers');
+  const onChainCovers = await onchaincovers.find().toArray();
+  const allOnChainCoversIds = new Set(onChainCovers.map(c => c.coverId));
+  console.log(`Check for missing ids..`);
+  for (let i = 1; i <= count; i++) {
+    const has = allOnChainCoversIds.has(i);
+    if (!has) {
+      console.error(`Missing id ${i}`);
+    }
+  }
 
   const allCovers = await smartcoverdetails.find().toArray();
 
@@ -85,8 +154,13 @@ async function main() {
     assert(allIds.has(i), `coverId: ${i} not present`);
   }
 
+
+  const allAcceptedClaimsIds = (await onchaincovers.find({
+    status: '1'
+  }).toArray()).map(c => c.coverId);
+
   const allAcceptedClaims = await smartcoverdetails.find({
-    statusNum: 1
+    coverId: { $in: allAcceptedClaimsIds }
   }).toArray();
 
   console.log(allAcceptedClaims);
@@ -111,6 +185,10 @@ async function main() {
   const daiFeed = nexusContractLoader.instance('DAIFEED');
   const pool1 = nexusContractLoader.instance('P1');
 
+  if (process.argv[2] === 'store') {
+    await storeOnChainCovers(db, qd, [1, 693, 2248, 2249]);
+    return;
+  }
 
   const pastPayoutEvents = await pool1.getPastEvents('Payout', {
     fromBlock: 0,
@@ -133,15 +211,26 @@ async function main() {
   let { totalSumAssuredFromDB, coversTotalSumAssuredByCurrency } = coversETHValue(allRelevantCovers, currencyRates);
 
 
+  const allRejectedClaimsIds = (await onchaincovers.find({
+    status: '2'
+  }).toArray()).map(c => c.coverId);
+
   const allRejectedClaims = await smartcoverdetails.find({
-    statusNum: 2
+    coverId: { $in: allRejectedClaimsIds }
   }).toArray();
 
+  const allSubmittedClaimsIds = (await onchaincovers.find({
+    status: '4'
+  }).toArray()).map(c => c.coverId);
 
   const allSubmittedClaims = await smartcoverdetails.find({
-    statusNum: 4
+    coverId: { $in: allSubmittedClaimsIds }
   }).toArray();
 
+  console.log({
+    allRejectedClaimsLen: allRejectedClaims.length,
+    allSubmittedClaimsLen: allSubmittedClaims.length
+  });
 
   let { totalSumAssuredFromDB: totalClaimed } = coversETHValue(allAcceptedClaims, currencyRates);
   let { totalSumAssuredFromDB: totalRejectedClaim } = coversETHValue(allRejectedClaims, currencyRates);
