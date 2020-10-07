@@ -135,6 +135,8 @@ async function main() {
     ]).toArray();
 
 
+  // { $lt: ((Math.floor(new Date().getTime() / 1000)).toString()) }
+
   const onchaincovers = db.collection('onchaincovers');
   const onChainCovers = await onchaincovers.find().toArray();
   const allOnChainCoversIds = new Set(onChainCovers.map(c => c.coverId));

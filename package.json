@@ -10,7 +10,7 @@
     "@openzeppelin/contract-loader": "^0.6.1",
     "@openzeppelin/contracts": "^2.5.1",
     "@openzeppelin/upgrades": "^2.8.0",
-    "@truffle/hdwallet-provider": "^1.0.34",
+    "@truffle/hdwallet-provider": "^1.1.0",
     "chai-bignumber": "^3.0.0",
     "dotenv": "^8.2.0",
     "eth-lightwallet": "^4.0.0",

@@ -51,6 +51,10 @@ class NexusContractLoader {
     const { contractAbi, address } = this.data[code];
     return this.loader.fromABI(contractAbi, null, address);
   }
+
+  instancefromABI(contractAbi, address) {
+    return this.loader.fromABI(contractAbi, null, address);
+  }
 }
 
 module.exports = NexusContractLoader;
