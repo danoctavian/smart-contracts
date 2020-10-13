@@ -12,6 +12,19 @@ const hex = string => '0x' + Buffer.from(string).toString('hex');
 const MASTER_ADDRESS = '0x01bfd82675dbcc7762c84019ca518e701c0cd07e';
 
 
+function chunk (arr, chunkSize) {
+  const chunks = [];
+  let i = 0;
+  const n = arr.length;
+
+  while (i < n) {
+    chunks.push(arr.slice(i, i + chunkSize));
+    i += chunkSize;
+  }
+  return chunks;
+}
+
+
 function getenv (key, fallback = false) {
 
   const value = process.env[key] || fallback;
@@ -44,15 +57,15 @@ function coversETHValue(covers, currencyRates) {
   };
 }
 
-async function storeOnChainCovers(db, qd, specificIds) {
+async function storeOnChainCovers(db, qd, specificIds, update) {
   const onchaincovers = db.collection('onchaincovers');
 
   console.log(`storing covers`);
   const lastIds =  await onchaincovers.find().sort({ coverId: -1 }).toArray();
-  const lastId = lastIds[0].coverId;
+  const lastId = lastIds[0] ? lastIds[0].coverId : 0;
   console.log(`lastId: ${lastId}`);
-  const batchSize = 10;
-  const startId = lastId - batchSize;
+  const batchSize = 100;
+  const startId = Math.max(lastId - batchSize, 0);
 
   async function fetch(coverId) {
     console.log(`Processing ${coverId}`);
@@ -60,16 +73,29 @@ async function storeOnChainCovers(db, qd, specificIds) {
     cover = await qd.getCoverDetailsByCoverID2(coverId);
 
     try {
-      await onchaincovers.insert({
-        coverId,
-        cid: cover.cid.toString(),
-        status: cover.status.toString(),
-        sumAssured: cover.sumAssured.toString(),
-        validUntil: cover.validUntil.toString(),
-        coverPeriod: cover.coverPeriod.toString()
-      });
+      if (update) {
+        console.log(`Updating status for ${coverId} to ${cover.status.toString()}`);
+        await onchaincovers.update({ cid: coverId.toString() }, {
+          coverId,
+          status: cover.status.toString()
+        });
+        console.log(`Done updating ${coverId}`);
+      } else {
+        await onchaincovers.insert({
+          coverId,
+          cid: cover.cid.toString(),
+          status: cover.status.toString(),
+          sumAssured: cover.sumAssured.toString(),
+          validUntil: cover.validUntil.toString(),
+          coverPeriod: cover.coverPeriod.toString()
+        });
+      }
     } catch (e) {
-      console.error(`Failed with ${e.stack}`);
+      if (e.message.includes('duplicate key error collection')) {
+        console.log(`Dupe coverId ${coverId} ${e.stack}`);
+      } else {
+        throw e;
+      }
     }
   }
 
@@ -77,15 +103,21 @@ async function storeOnChainCovers(db, qd, specificIds) {
     console.log({
       specificIds
     });
-    await Promise.all(specificIds.map(fetch));
+
+    const batches = chunk(specificIds, batchSize);
+    console.log(`Processing ${batches.length} batches.`);
+    let batchIndex = 0;
+    for (const batch of batches) {
+      console.log(`Processing batch ${batchIndex++}`);
+      await Promise.all(batch.map(fetch));
+    }
+
     console.log('Done');
     return;
   }
 
 
   for (let i = startId; i < 2400; i += batchSize) {
-
-    const coverId = i;
     const batch = [];
     for (let j = i; j < batchSize + i; j++) {
       batch.push(j);
@@ -188,7 +220,19 @@ async function main() {
   const pool1 = nexusContractLoader.instance('P1');
 
   if (process.argv[2] === 'store') {
-    await storeOnChainCovers(db, qd, [1, 693, 2248, 2249]);
+    await storeOnChainCovers(db, qd);
+    return;
+  }
+
+  if (process.argv[2] === 'unexpired') {
+    const possiblyUnexpired = await onchaincovers.find({
+      status: { $ne: "3" },
+      validUntil: { $lte: Math.floor((new Date()).getTime() / 1000).toString() }
+    }).toArray();
+
+    const coverIds = possiblyUnexpired.map(u => u.coverId);
+
+    await storeOnChainCovers(db, qd, coverIds, true);
     return;
   }
 
